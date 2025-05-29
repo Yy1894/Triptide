@@ -1,6 +1,7 @@
 <script>
-    // import WorldMap from '$lib/components/WorldMap.svelte';
+    import WorldMap from '$lib/components/WorldMap.svelte';
     import { goto } from '$app/navigation';
+    import '../app.css';
     
     let title = "Travel App";
     let activeTab = "Planner";
@@ -27,13 +28,15 @@
           </button>
         </div>
         <div class="profile">
-          <button class="profile-btn">👤</button>
+          <button class="profile-btn">
+            <img src="/user.png" alt="" class="profile-pic"/>
+          </button>
         </div>
       </div>
     </nav>
   
     <div class="map-container">
-      <!-- <WorldMap /> -->
+      <WorldMap />
     </div>
   
     <div class="bottom-bar">
@@ -50,7 +53,7 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
-      background-color: #F0F0F0;
+      background-color: var(--gray-50);
       font-family: 'Inter';
     }
   
@@ -71,7 +74,7 @@
     .right-nav {
       display: flex;
       align-items: center;
-      gap: 2rem;
+      gap: 1.5rem;
     }
   
     .menu {
@@ -85,7 +88,7 @@
       font-size: 1rem;
       cursor: pointer;
       padding: 0.5rem 1rem;
-      color: #999;
+      color:var(--gray-400);
       transition: all 0.2s ease;
     }
   
@@ -101,7 +104,9 @@
     .profile-btn {
       background: none;
       border: none;
-      font-size: 1.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      opacity: 0.3;
       cursor: pointer;
       padding: 0.5rem;
       border-radius: 50%;
@@ -109,13 +114,18 @@
     }
   
     .profile-btn:hover {
-      background-color: #f5f5f5;
+      background-color: var(--gray-100);
+      opacity: 1;
+    }
+
+    .profile-pic {
+      height: 100%;
     }
   
     .map-container {
       flex: 1;
       position: relative;
-      background-color: #F0F0F0;
+      background-color: var(--gray-50);
       /* overflow: hidden; */
     }
   
@@ -124,10 +134,9 @@
       justify-content: space-between;
       align-items: center;
       padding: 1.5rem 2rem;
-      margin-top: 10px;
       background-color: white;
       border-radius: 20px 20px 0 0;
-      box-shadow: 0 -2px 10px  rgba(0, 0, 0, 0.1);
+      box-shadow: inset 0 0 2px  rgba(0, 0, 0, 0.1);
     }
   
     .past-trips {
@@ -148,11 +157,11 @@
     .hint {
       margin: 0.2rem 0 0 0;
       font-size: 0.8rem;
-      color: #666;
+      color: var(--gray-400);
     }
   
     .new-trip-btn {
-      background-color: #38C1D0;
+      background-color: var(--planner-300);
       color: white;
       border: none;
       padding: 0.8rem 1.5rem;
