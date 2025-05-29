@@ -1,0 +1,40 @@
+:root {
+    --white: #FFFFFF;
+    --black: #000000;
+
+    /* Gray */
+    --gray-50: #F0F0F0;
+    --gray-100: #E6E6E6;
+    --gray-200: #C6C6C6;
+    --gray-300: #B0B0B0;
+    --gray-400: #9B9B9B;
+    --gray-500: #868686;
+    --gray-600: #727272;
+    --gray-700: #5E5E5E;
+    --gray-800: #4B4B4B;
+    --gray-900: #393939;
+
+    /* Planner */
+    --planner-50: #A5FFFF;
+    --planner-100: #83EDFA;
+    --planner-200: #60D7E5;
+    --planner-300: #38C1D0;
+    --planner-400: #00ACBB;
+    --planner-500: #0096A6;
+    --planner-600: #008190;
+    --planner-700: #006C7B;
+    --planner-800: #005865;
+    --planner-900: #004450;
+
+    /* Memory */
+    --memory-50: #FFCFAD;
+    --memory-100: #FFB491;
+    --memory-200: #FF9976;
+    --memory-300: #FF7F5E;
+    --memory-400: #FF6747;
+    --memory-500: #EE4F33;
+    --memory-600: #D43721;
+    --memory-700: #B82010;
+    --memory-800: #9B0502;
+    --memory-900: #7D0000;
+}
