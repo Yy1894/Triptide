@@ -1,28 +1,22 @@
-# sv
+# Travel App
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+## How to Start
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+First, you need to clone this repository by clicking the triple dots button &rarr; `Open with VS Code` or using the command below:
+```
+git clone http://git.prototyping.id/20210782/travel-app.git
 ```
 
+Then, you need to download the project dependencies by typing this command:
+```
+npm install
+```
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Once you've created a project and installed dependencies, start a development server:
 
 ```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
 ## Building
