@@ -1,13 +1,7 @@
 <script>
-    import Button from "./Button.svelte";
-
-    export let title = 'Past Trips';
-    export let desc = 'Click to view all past trips';
+    export let title = 'Your Trips';
+    export let desc = 'Click to view all your trips';
     export let onClick = () => {};
-
-    // change if there is a button
-    export let buttonText = '+ Plan a new trip';
-    export let onButtonClick = undefined;
 </script>
 
 <div class="bottom-bar">
@@ -17,10 +11,6 @@
         <h2>{title}</h2>
         <p class="hint">{desc}</p>
     </div>
-
-    {#if typeof onButtonClick === 'function'}
-        <Button text={buttonText} type="single" onClick={onButtonClick} />
-    {/if}
 </div>
 
 <style>

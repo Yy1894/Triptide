@@ -1,14 +1,13 @@
 <script lang="ts">
     import '../../app.css';
     import { goto } from '$app/navigation';
-    import { onMount } from 'svelte';
-    import { Colors } from '$lib/constants/Colors';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import ProfilePicture from '$lib/components/ProfilePicture.svelte';
     import BottomBar from '$lib/components/BottomBar.svelte';
     import Button from '$lib/components/Button.svelte';
     import ItineraryDate from '$lib/components/ItineraryDate.svelte';
+    import { page } from '$app/state';
 
     // Placeholder data obtained from the popup
     let destination = "Taiwan";
@@ -16,7 +15,7 @@
     let startDate = "27/04/2025";
     let endDate = "30/04/2025";
     let places: string[] = [];
-    const place_placeholder = { name: 'Somewhere', desc: 'desc of the place'}
+    const place_placeholder = { name: 'Somewhere'}
     const places_placeholder = Array(3).fill(place_placeholder);
     
     // Array of dates between startDate to endDate
@@ -40,7 +39,15 @@
     }
 
     function handleBack() {
-        goto('/');
+        // Get the 'from' parameter from the URL
+        const fromPage = page.url.searchParams.get('from');
+        console.log(`fromPage = ${fromPage}`);
+        
+        if (fromPage === 'trips') {
+            goto('/trips');
+        } else {
+            goto('/');
+        }
     }
 
     function handleAddPlace() {
@@ -142,7 +149,7 @@
 
     <div class="map-section">
         <div class="map"></div>
-        <BottomBar desc={desc} onClick={handlePastTrip} />
+        <BottomBar title="Past Trips" desc={desc} onClick={handlePastTrip} />
     </div>
 </main>
 
@@ -160,6 +167,8 @@
         box-sizing: border-box;
         padding: 0.5rem 0rem 0rem 0rem;
         overflow-y: auto;
+        display: flex;
+        flex-direction: column;
     }
 
     .map-section {
@@ -176,10 +185,11 @@
 
     header {
         display: flex;
+        flex-shrink: 0;
         align-items: center;
         gap: 1rem;
         padding: 0 2rem 1.5rem 1rem;
-        margin-bottom: 3rem;
+        margin-bottom: 1rem;
         border-bottom: 1px solid var(--gray-100);
     }
 
@@ -229,6 +239,10 @@
 
     .content {
         padding: 0 1.5rem 0 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
     }
 
     .section-header {
@@ -262,6 +276,7 @@
 
     .section-text h2 {
         margin: 0;
+        font-size: 1.2rem;
         font-weight: 600;
     }
 
@@ -272,11 +287,12 @@
 
     .button-group {
         position: sticky;
+        flex-shrink: 0;
         background-color: var(--white);
         padding: 1.5rem 0;
         bottom: 0;
         display: flex;
         gap: 1rem;
-        margin-top: 2rem;
+        margin-top: auto;
     }
 </style>
