@@ -51,4 +51,16 @@
         background-color: var(--gray-100);
         color: var(--gray-600);
     }
+
+    .memory {
+        background-color: var(--memory-500);
+        color: var(--white);
+        font-weight: 600;
+    }
+
+    .memory:hover {
+        background-color: var(--memory-400);
+        color: var(--white);
+        font-weight: 600;
+    }
   </style>  

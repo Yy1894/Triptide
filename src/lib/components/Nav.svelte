@@ -4,6 +4,7 @@
 
     let title = "Travel App";
     export let activeTab = "Home";
+    export let darkMode = false;
 
     /**
      * 
@@ -15,13 +16,15 @@
             goto('/');
         } else if (tab === 'Planner') {
             goto('/trips');
+        } else if (tab === 'Memory') {
+            goto('/memories');
         } else {
             console.log("will be implemented later");
         }
     }
 </script>
 
-<nav>
+<nav class:dark-mode={darkMode}>
     <div class="logo">{title}</div>
     <div class="right-nav">
         <div class="menu">
@@ -43,7 +46,7 @@
         </div>
         <div class="profile">
             <button class="profile-btn" aria-label="Open profile">
-                <i class="fa-regular fa-user fa-xl" style="color: {Colors.black}"></i>
+                <i class="fa-regular fa-user fa-xl"></i>
             </button>
         </div>
     </div>
@@ -55,10 +58,10 @@
         justify-content: space-between;
         align-items: center;
         padding: 1rem 2rem;
-        border-bottom: 1px solid var(--gray-100);
+        border-bottom: 1px solid var(--gray-200);
         background-color: var(--white);
     }
-  
+
     .logo {
         font-size: 1.5rem;
         font-weight: bold;
@@ -69,11 +72,11 @@
         align-items: center;
         gap: 1.5rem;
     }
-  
+
     .menu {
         display: flex;
     }
-  
+
     .menu button {
         background: none;
         border: none;
@@ -85,16 +88,16 @@
         min-width: 100px;
         text-align: center;
     }
-  
+
     .menu button.active {
         color: var(--black);
         font-weight: 600;
     }
-  
+
     .menu button:hover {
         color: var(--black);
     }
-  
+
     .profile-btn {
         background: none;
         border: none;
@@ -106,9 +109,43 @@
         border-radius: 50%;
         transition: background-color 0.2s ease;
     }
-  
+
     .profile-btn:hover {
         background-color: var(--gray-100);
         opacity: 1;
     }
-</style> 
+
+    nav.dark-mode {
+        background-color: var(--black);
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    nav.dark-mode .menu button {
+        color: var(--gray-400);
+    }
+
+    nav.dark-mode .menu button:hover {
+        color: var(--white);
+    }
+
+    nav.dark-mode .menu button.active {
+        color: var(--white);
+        font-weight: 600;
+    }
+
+    nav.dark-mode .profile-btn {
+        background-color: var(--black);
+    }
+
+    nav.dark-mode .profile-btn:hover {
+        background-color: var(--gray-700);
+    }
+
+    nav .profile-btn i {
+        color: var(--black);
+    }
+
+    nav.dark-mode .profile-btn i {
+        color: var(--white);
+    }
+</style>
