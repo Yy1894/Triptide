@@ -1,11 +1,15 @@
-<script lang="ts">
+<script lang>
     import { Colors } from '$lib/constants/Colors';
     import { goto } from '$app/navigation';
 
     let title = "Travel App";
     export let activeTab = "Home";
 
-    function handleNavigation(tab: "Home" | "Planner" | "Memory") {
+    /**
+     * 
+     * @param tab {string}
+     */
+    function handleNavigation(tab) {
         activeTab = tab;
         if (tab === 'Home') {
             goto('/');

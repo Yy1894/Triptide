@@ -3,11 +3,15 @@
     import { goto } from '$app/navigation';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+    import { page } from '$app/state';
+    import { onMount } from 'svelte';
+    import { Loader } from '@googlemaps/js-api-loader';
     import ProfilePicture from '$lib/components/ProfilePicture.svelte';
     import BottomBar from '$lib/components/BottomBar.svelte';
     import Button from '$lib/components/Button.svelte';
     import ItineraryDate from '$lib/components/ItineraryDate.svelte';
-    import { page } from '$app/state';
+    import { browser } from '$app/environment';
+
 
     // Placeholder data obtained from the popup
     let destination = "Taiwan";
@@ -17,6 +21,36 @@
     let places: string[] = [];
     const place_placeholder = { name: 'Somewhere'}
     const places_placeholder = Array(3).fill(place_placeholder);
+
+    const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
+    let mapContainer: HTMLDivElement;
+
+    onMount(async () => {
+        if (!browser) return;
+        
+        if (!GOOGLE_PLACES_API_KEY) {
+            console.error('Google Places API key is missing');
+            return;
+        }
+        
+        const loader = new Loader({
+            apiKey: GOOGLE_PLACES_API_KEY,
+            version: "weekly",
+            libraries: ["places"],
+            language: 'en'
+        });
+
+        try {
+            await loader.importLibrary("maps");
+
+            const map = new google.maps.Map(mapContainer, {
+                center: { lat: 23.5, lng: 121 }, // Taiwan's coordinates
+                zoom: 8,
+            });
+        } catch (error) {
+            console.error('Error loading Google Maps:', error);
+        }
+    });
     
     // Array of dates between startDate to endDate
     let tripDates = ["27/04/2025", "28/04/2025", "29/04/2025", "30/04/2025"];
@@ -148,7 +182,7 @@
     </div>
 
     <div class="map-section">
-        <div class="map"></div>
+        <div class="map-container" bind:this={mapContainer}></div>
         <BottomBar title="Past Trips" desc={desc} onClick={handlePastTrip} />
     </div>
 </main>
@@ -175,10 +209,10 @@
         display: flex;
         flex-direction: column;
         height: 100vh;
-        background-color: var(--gray-50);
+        background-color: #84D7EB;
     }
 
-    .map {
+    .map-container {
         flex: 1;
         position: relative;
     }
@@ -189,7 +223,6 @@
         align-items: center;
         gap: 1rem;
         padding: 0 2rem 1.5rem 1rem;
-        margin-bottom: 1rem;
         border-bottom: 1px solid var(--gray-100);
     }
 
@@ -238,7 +271,7 @@
     }
 
     .content {
-        padding: 0 1.5rem 0 1.5rem;
+        padding: 1rem 1.5rem 0 1.5rem;
         flex: 1;
         display: flex;
         flex-direction: column;

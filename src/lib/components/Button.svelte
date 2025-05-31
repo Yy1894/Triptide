@@ -1,5 +1,5 @@
 <script>
-    // import '../../app.css';
+    import '../../app.css';
     export let text = 'Button';
     export let type = 'single';
     export let onClick = () => {};
