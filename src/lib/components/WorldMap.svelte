@@ -111,4 +111,21 @@
     r: 8;
     cursor: pointer;
   }
+
+  :global(.dark .map-wrapper) {
+    background-color: var(--black);
+  }
+
+  :global(.dark .country) {
+      fill: #121212;
+      stroke: var(--gray-700);
+  }
+
+  :global(.dark .country:hover) {
+      fill: #5a1c05;
+  }
+
+  :global(.dark .marker) {
+      fill: var(--memory-500);
+  }
 </style> 

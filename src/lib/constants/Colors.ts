@@ -1,6 +1,6 @@
 export const Colors = {
     white: '#FFFFFF',
-    black: '#000000',
+    black: '#121212',
     gray: {
         light50: '#F0F0F0',
         light100: '#E6E6E6',
@@ -11,7 +11,7 @@ export const Colors = {
         med600: '#727272',
         dark700: '#5E5E5E',
         dark800: '#4B4B4B',
-        dark900: '#393939'
+        dark900: '#262626'
     },
     planner: {
         light50: '#A5FFFF',
