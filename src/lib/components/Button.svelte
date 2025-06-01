@@ -63,4 +63,14 @@
         color: var(--white);
         font-weight: 600;
     }
+
+    .orange {
+        width: 50%;
+        background-color: var(--memory-500);
+        color: var(--white);
+    }
+
+    .orange:hover {
+        background-color: var(--memory-400);
+    }
   </style>  
