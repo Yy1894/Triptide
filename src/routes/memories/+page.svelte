@@ -32,7 +32,7 @@
       <Button text="+ Add a new memory" type="memory" onClick={handleNewMemory} />
   </div>
 
-  <NewMemoryPopup bind:showPopup={showNewMemoryPopup} fromPage="memory" />
+  <NewMemoryPopup bind:showPopup={showNewMemoryPopup} />
 
 </main>
 

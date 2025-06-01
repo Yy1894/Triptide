@@ -1,6 +1,8 @@
-<script>
+<script lang="ts">
     import { Colors } from '$lib/constants/Colors';
     import { goto } from '$app/navigation';
+    import { onMount } from 'svelte';
+    import { Loader } from '@googlemaps/js-api-loader';
     import Button from './Button.svelte';
 
     export let showPopup = false;
@@ -10,6 +12,74 @@
     let startDate = "";
     let endDate = "";
     let friends = "";
+    let destinationError = false;
+    let startDateError = false;
+    let endDateError = false;
+    let destinationInput: HTMLDivElement;
+    
+    const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
+
+    onMount(async () => {
+        if (!GOOGLE_PLACES_API_KEY) {
+            console.error('Google Maps API key is missing');
+            return;
+        }
+
+        const loader = new Loader({
+            apiKey: GOOGLE_PLACES_API_KEY,
+            version: "weekly",
+            libraries: ["places"],
+            language: 'en'
+        });
+
+        try {
+            await loader.importLibrary("places");
+
+            const waitForElement = () => new Promise<void>((resolve) => {
+                const check = () => {
+                    if (destinationInput) return resolve();
+                    requestAnimationFrame(check);
+                };
+                check();
+            });
+
+            await waitForElement();
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'destination-input';
+            input.placeholder = 'Where do you want to go?';
+
+            destinationInput.appendChild(input);
+
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                types: ['(regions)']
+            });
+            autocomplete.setFields(['name', 'formatted_address']);
+
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                destination = place.name || "";
+            });
+
+
+            // ------ The Implementation below is the new one, but can't style it --------
+            // const placeAutocomplete = new google.maps.places.PlaceAutocompleteElement({
+            //     types: ['(cities)'], // Restrict to cities only
+            // });
+
+            // destinationInput.appendChild(placeAutocomplete);
+
+            // //@ts-ignore
+            // placeAutocomplete.addEventListener('gmp-select', async ({ placePrediction }) => {
+            //     const place = placePrediction.toPlace();
+            //     await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
+            //     destination = place.displayName;
+            // });
+        } catch (error) {
+            console.error('Error loading Places Autocomplete:', error);
+        }
+    });
 
     function handleCancel() {
         showPopup = false;
@@ -20,7 +90,15 @@
     }
 
     function handleStart() {
-        console.log(destination, startDate, endDate, friends);
+        destinationError = !destination;
+        startDateError = !startDate;
+        endDateError = !endDate;
+
+        if (destinationError || startDateError || endDateError) {
+            alert('Please fill in all required fields: Destination, Start Date, End Date');
+            return;
+        }
+
         goto(`/itinerary?from=${fromPage}`);
         handleCancel();
     }
@@ -32,31 +110,28 @@
         <h1>Start a New Plan</h1>
         
         <div class="input-form">
-            <label for="destination">Destination</label>
-            <input 
-                type="text" 
-                id="destination" 
-                bind:value={destination} 
-                placeholder="Where do you want to go?"
-            />
+            <label for="destination-input" class:error={destinationError}>Destination</label>
+            <div bind:this={destinationInput} class="destination-wrapper" id="destination"></div>
         </div>
 
         <div class="date-group">
             <div class="input-form">
-                <label for="start-date">Start Date</label>
+                <label for="start-date" class:error={startDateError}>Start Date</label>
                 <input 
                     type="date" 
                     id="start-date" 
                     bind:value={startDate}
+                    required
                 />
             </div>
 
             <div class="input-form">
-                <label for="end-date">End Date</label>
+                <label for="end-date" class:error={endDateError}>End Date</label>
                 <input 
                     type="date" 
                     id="end-date" 
                     bind:value={endDate}
+                    required
                 />
             </div>
         </div>
@@ -124,6 +199,10 @@
         color: var(--gray-800);
     }
 
+    .input-form label.error {
+        color: var(--memory-600) !important;
+    }
+
     .input-form input {
         width: 95.3%;
         padding: 0.75rem;
@@ -133,6 +212,18 @@
     }
 
     input:focus {
+        outline-color: var(--planner-600);
+    }
+
+    :global(input#destination-input) {
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+        padding: 0.75rem;
+        width: 95.3%;
+        font-size: 1rem;
+    }
+
+    :global(input#destination-input:focus) {
         outline-color: var(--planner-600);
     }
 

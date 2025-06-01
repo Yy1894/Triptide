@@ -1,5 +1,4 @@
-<script lang>
-    import { Colors } from '$lib/constants/Colors';
+<script>
     import { goto } from '$app/navigation';
 
     let title = "Travel App";

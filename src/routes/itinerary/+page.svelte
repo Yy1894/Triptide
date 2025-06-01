@@ -6,12 +6,13 @@
     import { page } from '$app/state';
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
+    import { browser } from '$app/environment';
     import ProfilePicture from '$lib/components/ProfilePicture.svelte';
     import BottomBar from '$lib/components/BottomBar.svelte';
     import Button from '$lib/components/Button.svelte';
     import ItineraryDate from '$lib/components/ItineraryDate.svelte';
-    import { browser } from '$app/environment';
-
+    import AddPlaces from '$lib/components/AddPlaces.svelte';
+    import PlaceCard from '$lib/components/PlaceCard.svelte';
 
     // Placeholder data obtained from the popup
     let destination = "Taiwan";
@@ -53,6 +54,7 @@
     });
     
     // Array of dates between startDate to endDate
+    // TODO: implement generateTripDates(startDate, endDate)
     let tripDates = ["27/04/2025", "28/04/2025", "29/04/2025", "30/04/2025"];
     let expandedSections = {
         explore: true,
@@ -63,10 +65,20 @@
     tripDates.forEach(date => expandedDates[date] = false);
 
     let recommendedPlaces = [
-        { name: "Place name", image: "" },
-        { name: "Place name", image: "" },
-        { name: "Place name", image: "" }
+        { name: "Place name" },
+        { name: "Place name" },
+        { name: "Place name" }
     ];
+
+    let placesToVisit = [
+        { name: "Place name"},
+        { name: "Place name"},
+        { name: "Place name"}
+    ];
+
+    function handleDeletePlace(index: number) {
+        placesToVisit = placesToVisit.filter((_, i) => i !== index);
+    }
 
     function toggleSection(section: keyof typeof expandedSections) {
         expandedSections[section] = !expandedSections[section];
@@ -84,8 +96,14 @@
         }
     }
 
-    function handleAddPlace() {
-        // TODO: Implement add place functionality
+    function handlePlaceSelected(place: google.maps.places.PlaceResult) {
+        const newPlace = {
+            name: place.name || 'Unknown Place',
+            desc: place.formatted_address || '',
+            img: place.photos ? place.photos[0].getUrl() : 'placeholder.jpeg'
+        };
+        
+        placesToVisit = [...placesToVisit, newPlace];
     }
     
     function handlePastTrip() {
@@ -127,17 +145,6 @@
         </header>
 
         <div class="content">
-            <section class="explore-section">
-                <button class="section-header" onclick={() => toggleSection('explore')}>
-                    <div class="section-text">
-                        <i class="fa-solid fa-chevron-right arrow-icon" class:rotated={expandedSections.explore}></i>
-                        <h2>Explore</h2>
-                    </div>
-                </button>
-
-                <!-- TODO: implement the content part -->
-            </section>
-
             <section class="places-section">
                 <button class="section-header" onclick={() => toggleSection('places_to_visit')}>
                     <div class="section-text">
@@ -147,6 +154,27 @@
                 </button>
 
                 <!-- TODO: implement the content part -->
+                {#if expandedSections.places_to_visit}
+                    <div
+                        class="section-content places"
+                        transition:slide={{ duration: 400, easing: quintOut }}
+                    >   
+                        <div class="added-places">
+                            {#each placesToVisit as place, i}
+                                <PlaceCard 
+                                    variant="simple" 
+                                    place={place}
+                                    onDelete={() => handleDeletePlace(i)}
+                                />
+                            {/each}
+                        </div>
+
+                        <AddPlaces
+                            onPlaceSelected={handlePlaceSelected}
+                            countryRestriction="tw"
+                        />
+                    </div>
+                {/if}
             </section>
 
             <section class="itinerary-section">
@@ -166,7 +194,6 @@
                             <ItineraryDate 
                                 {date} 
                                 isExpanded={expandedDates[date]}
-                                places={places_placeholder}
                             />
                         {/each} 
                     </div>
@@ -316,6 +343,14 @@
     .section-content {
         padding-left: 1.5rem;
         padding-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 1rem;
+        gap: 0.5rem;
+    }
+
+    .section-content.places{
+        margin-left: 0.5rem;
     }
 
     .button-group {

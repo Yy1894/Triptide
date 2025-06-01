@@ -1,17 +1,30 @@
-<script>
+<script lang="ts">
   import PlaceCard from "./PlaceCard.svelte";
+  import AddPlaces from "./AddPlaces.svelte";
   import { slide } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
+
   export let date;
   export let isExpanded = true;
-  /**
-   * @type {{ name: string, desc: string, img: string, time: string }[]}
-   */
-   export let places = [];
-  // export let recommendedPlaces = [];
+  export let places: { name: string; desc?: string; img?: string; time?: string; }[] = [];
 
   function toggleDate() {
     isExpanded = !isExpanded;
+  }
+
+  function handlePlaceSelected(place: google.maps.places.PlaceResult) {
+    const newPlace = {
+      name: place.name || 'Unknown Place',
+      desc: place.formatted_address || '',
+      img: place.photos ? place.photos[0].getUrl() : 'placeholder.jpeg',
+      time: 'Add Time'
+    };
+    
+    places = [...places, newPlace];
+  }
+
+  function handleDeletePlace(index: number) {
+    places = places.filter((_, i) => i !== index);
   }
 </script>
   
@@ -28,14 +41,16 @@
       class="date-content"
       transition:slide={{ duration: 400, easing: quintOut }}
     >
-      {#each places as place}
-        <PlaceCard {place} />
+      {#each places as place, i}
+        <PlaceCard {place} onDelete={() => handleDeletePlace(i)} />
       {/each}
 
-      <button class="add-place-btn">
-        <i class="fa-solid fa-location-dot"></i>
-        Add places
-      </button>
+      <div class="add-places-container">
+        <AddPlaces 
+          onPlaceSelected={handlePlaceSelected}
+          countryRestriction="tw"
+        />
+      </div>
     </div>
   {/if}
 </div>
@@ -65,14 +80,14 @@
   }
 
   .date-text h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 500;
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 500;
   }
 
   .arrow-icon {
-    transition: transform 0.3s ease;
-    transform-origin: center;
+      transition: transform 0.3s ease;
+      transform-origin: center;
   }
 
   .rotated {
@@ -83,24 +98,7 @@
       padding: 1rem 0 1rem 2rem;
   }
 
-  .add-place-btn {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem;
-      background: white;
-      border: 2px solid var(--gray-100);
-      border-radius: 0.75rem;
-      color: var(--gray-600);
-      cursor: pointer;
-      margin: 1rem 0;
-      transition: all 0.2s ease;
-  }
-
-  .add-place-btn:hover {
-      background: var(--gray-50);
-      border-color: var(--gray-50);
+  .add-places-container {
+    margin-top: 1rem;
   }
 </style> 
