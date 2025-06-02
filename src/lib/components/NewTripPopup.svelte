@@ -9,13 +9,18 @@
     export let fromPage = 'home';
 
     let destination = "";
+    let lastSelectedPlaceName = "";
     let startDate = "";
     let endDate = "";
-    let friends = "";
+    let friends: string[] = [];
+    let currentEmail = "";
     let destinationError = false;
     let startDateError = false;
     let endDateError = false;
+    let dateOrderError = false;
     let destinationInput: HTMLDivElement;
+    let autocomplete: google.maps.places.Autocomplete | null = null;
+    let isGoogleLoaded = false;
     
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
@@ -34,59 +39,91 @@
 
         try {
             await loader.importLibrary("places");
-
-            const waitForElement = () => new Promise<void>((resolve) => {
-                const check = () => {
-                    if (destinationInput) return resolve();
-                    requestAnimationFrame(check);
-                };
-                check();
-            });
-
-            await waitForElement();
-
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.id = 'destination-input';
-            input.placeholder = 'Where do you want to go?';
-
-            destinationInput.appendChild(input);
-
-            const autocomplete = new google.maps.places.Autocomplete(input, {
-                types: ['(regions)']
-            });
-            autocomplete.setFields(['name', 'formatted_address']);
-
-            autocomplete.addListener('place_changed', () => {
-                const place = autocomplete.getPlace();
-                destination = place.name || "";
-            });
-
-
-            // ------ The Implementation below is the new one, but can't style it --------
-            // const placeAutocomplete = new google.maps.places.PlaceAutocompleteElement({
-            //     types: ['(cities)'], // Restrict to cities only
-            // });
-
-            // destinationInput.appendChild(placeAutocomplete);
-
-            // //@ts-ignore
-            // placeAutocomplete.addEventListener('gmp-select', async ({ placePrediction }) => {
-            //     const place = placePrediction.toPlace();
-            //     await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
-            //     destination = place.displayName;
-            // });
+            isGoogleLoaded = true;
         } catch (error) {
             console.error('Error loading Places Autocomplete:', error);
         }
     });
+
+    async function initializeAutocomplete() {
+        if (!isGoogleLoaded || !destinationInput) return;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'destination-input';
+        input.placeholder = 'Where do you want to go?';
+
+        destinationInput.appendChild(input);
+
+        autocomplete = new google.maps.places.Autocomplete(input, {
+            types: ['(regions)']
+        });
+        autocomplete.setFields(['name', 'formatted_address']);
+        
+        autocomplete.addListener('place_changed', () => {
+            if (!autocomplete) return;
+            const place = autocomplete.getPlace();
+            if (place.name) {
+                destination = place.name;
+                lastSelectedPlaceName = input.value.trim();
+                destinationError = false;
+            }
+        });
+
+        let placeChangeTimeout;
+
+        input.addEventListener('blur', () => {
+            // Use a small delay to allow place_changed event to fire first
+            placeChangeTimeout = setTimeout(() => {
+                const trimmed = input.value.trim();
+                if (trimmed && trimmed !== lastSelectedPlaceName) {
+                    destinationError = true;
+                }
+                else if (!trimmed) {
+                    // Don't show error for empty field
+                    destinationError = false;
+                    destination = "";
+                }
+            }, 200);
+        });
+    }
+
+    function isValidEmail(email: string) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    function handleEmailInput(event: KeyboardEvent) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const email = currentEmail.trim();
+            
+            if (email && isValidEmail(email) && !friends.includes(email)) {
+                friends = [...friends, email];
+                currentEmail = "";
+            }
+        }
+    }
+
+    function removeEmail(emailToRemove: string) {
+        friends = friends.filter(email => email !== emailToRemove);
+    }
 
     function handleCancel() {
         showPopup = false;
         destination = "";
         startDate = "";
         endDate = "";
-        friends = "";
+        friends = [];
+        currentEmail = "";
+        destinationError = false;
+        startDateError = false;
+        endDateError = false;
+
+        if (autocomplete) {
+            google.maps.event.clearInstanceListeners(autocomplete);
+            autocomplete = null;
+        }
     }
 
     function handleStart() {
@@ -94,13 +131,32 @@
         startDateError = !startDate;
         endDateError = !endDate;
 
-        if (destinationError || startDateError || endDateError) {
-            alert('Please fill in all required fields: Destination, Start Date, End Date');
-            return;
+        // Check if both dates are filled before comparing them
+        if (startDate && endDate) {
+            const startDateTime = new Date(startDate).getTime();
+            const endDateTime = new Date(endDate).getTime();
+            
+            if (endDateTime < startDateTime) {
+                startDateError = true;
+                endDateError = true;
+                dateOrderError = true;
+                return;
+            }
+            dateOrderError = false;
         }
 
-        goto(`/itinerary?from=${fromPage}`);
-        handleCancel();
+        if (destinationError || startDateError || endDateError) {
+            // alert('Please fill in all required fields: Destination, Start Date, End Date');
+            return;
+        }
+        else {
+            goto(`/itinerary?from=${fromPage}`);
+            handleCancel();
+        }
+    }
+
+    $: if (showPopup && isGoogleLoaded && destinationInput) {
+        initializeAutocomplete();
     }
 </script>
 
@@ -110,45 +166,67 @@
         <h1>Start a New Plan</h1>
         
         <div class="input-form">
-            <label for="destination-input" class:error={destinationError}>Destination</label>
+            <label for="destination-input">Destination</label>
             <div bind:this={destinationInput} class="destination-wrapper" id="destination"></div>
+            {#if destinationError}
+                <p class="error-message">Please enter your destination</p>
+            {/if}
         </div>
 
         <div class="date-group">
             <div class="input-form">
-                <label for="start-date" class:error={startDateError}>Start Date</label>
+                <label for="start-date">Start Date</label>
                 <input 
                     type="date" 
                     id="start-date" 
                     bind:value={startDate}
                     required
                 />
+                {#if startDateError}
+                    <p class="error-message">
+                        {dateOrderError ? 'Start date must be before end date' : 'Please enter the starting date'}
+                    </p>
+                {/if}
             </div>
 
             <div class="input-form">
-                <label for="end-date" class:error={endDateError}>End Date</label>
+                <label for="end-date">End Date</label>
                 <input 
                     type="date" 
                     id="end-date" 
                     bind:value={endDate}
                     required
                 />
+                {#if endDateError}
+                    <p class="error-message">
+                        {dateOrderError ? 'End date must be after start date' : 'Please enter the ending date'}
+                    </p>
+                {/if}
             </div>
         </div>
 
         <div class="input-form">
             <label for="trip-friends">
                 <span class="invite-label">
-                    + Invite Friends
+                    + Invite Tripmates
                     <i class="fa-solid fa-user-group" style="color: {Colors.gray.dark800}"></i>
                 </span>
             </label>
-            <input 
-                type="text" 
-                id="trip-friends"
-                bind:value={friends} 
-                placeholder="Enter email addresses"
-            />
+            <div class="email-input-container">
+                {#each friends as email}
+                    <div class="email-tag">
+                        <span>{email}</span>
+                        <button class="remove-email" onclick={() => removeEmail(email)}>×</button>
+                    </div>
+                {/each}
+                <input 
+                    type="email" 
+                    id="trip-friends"
+                    bind:value={currentEmail}
+                    onkeydown={handleEmailInput}
+                    placeholder={friends.length ? "" : "Enter email addresses"}
+                />
+            </div>
         </div>
 
         <div class="button-group">
@@ -199,8 +277,10 @@
         color: var(--gray-800);
     }
 
-    .input-form label.error {
-        color: var(--memory-600) !important;
+    .error-message {
+        color: var(--memory-600);
+        margin: 0.5rem 0 0 0;
+        font-size: 0.8rem;
     }
 
     .input-form input {
@@ -252,5 +332,59 @@
         display: flex;
         gap: 1rem;
         margin-top: 2rem;
+    }
+
+    .email-input-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+        min-height: 2.5rem;
+        align-items: center;
+    }
+
+    .email-input-container input {
+        border: none;
+        outline: none;
+        flex: 1;
+        min-width: 50px;
+        padding: 0;
+        padding-left: 0.25rem;
+    }
+
+    .email-input-container input:focus {
+        outline: none;
+    }
+
+    .email-tag {
+        display: flex;
+        align-items: center;
+        background-color: var(--gray-100);
+        padding: 0.25rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        gap: 0.5rem;
+    }
+    .email-tag:hover {
+        background-color: var(--gray-200);
+        opacity: 0.8;
+    }
+
+    .remove-email {
+        background: none;
+        border: none;
+        color: var(--gray-600);
+        cursor: pointer;
+        padding: 0;
+        font-size: 1.2rem;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    .remove-email:hover {
+        color: var(--memory-600);
     }
 </style> 
