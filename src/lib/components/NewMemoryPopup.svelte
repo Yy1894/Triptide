@@ -66,6 +66,10 @@
         return selectedLocation === 'custom';
     }
 
+    function removeImage(imageToRemove: File) {
+        images = images.filter(img => img !== imageToRemove);
+    }
+
     let showLocationError = false;
     let showImageError = false;
 
@@ -155,6 +159,7 @@
                             <div class="preview-list">
                                 {#each images as img}
                                     <div class="preview-item">
+                                        <button class="delete-button" on:click={() => removeImage(img)}>×</button>
                                         <img src={URL.createObjectURL(img)} alt={img.name} />
                                         <p>{img.name}</p>
                                     </div>
@@ -286,6 +291,7 @@
     }
 
     .preview-item {
+        position: relative;
         width: 80px;
         display: flex;
         flex-direction: column;
@@ -304,6 +310,22 @@
         margin-top: 0.3rem;
         color: var(--gray-400);
     }
+
+    .delete-button {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(38, 38, 38, 0.5);
+        border: none;
+        color: var(--white);
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        z-index: 2;
+    }
+
 
     .drop-area {
         width: 100%;

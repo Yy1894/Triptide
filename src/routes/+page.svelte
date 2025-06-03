@@ -17,7 +17,7 @@
 </script>
 
 <main>
-  <Nav activeTab="Home" />
+  <Nav activeTab="Planner" />
 
   <div class="map-container">
       <WorldMap />

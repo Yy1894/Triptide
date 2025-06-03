@@ -42,11 +42,11 @@
 </script>
 
 <main>
-    <Nav activeTab="Planner" />
+    <Nav activeTab="MyTrip" />
 
     <div class="content" bind:this={contentContainer}>
         <div class="header">
-            <h1>Your Trips</h1>
+            <h1>My Trips</h1>
         </div>
 
         <div class="tabs">

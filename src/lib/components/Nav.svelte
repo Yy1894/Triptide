@@ -1,9 +1,22 @@
 <script>
     import { goto } from '$app/navigation';
+    import { onMount } from 'svelte';
+
+    onMount(() => {
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.profile')) {
+                showDropdown = false;
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    });
 
     let title = "Travel App";
-    export let activeTab = "Home";
+    export let activeTab = "Planner";
     export let darkMode = false;
+
+    let showDropdown = false;
 
     /**
      * 
@@ -11,27 +24,25 @@
      */
     function handleNavigation(tab) {
         activeTab = tab;
-        if (tab === 'Home') {
+       if (tab === 'Planner') {
             goto('/');
-        } else if (tab === 'Planner') {
-            goto('/trips');
         } else if (tab === 'Memory') {
             goto('/memories');
+        } else if (tab === 'MyTrip') {
+            goto('/trips');
+        }  else if (tab === 'MyMemory') {
+            goto('/mymemory');
         } else {
             console.log("will be implemented later");
         }
     }
+
 </script>
 
 <nav class:dark-mode={darkMode}>
     <div class="logo">{title}</div>
     <div class="right-nav">
         <div class="menu">
-            <button 
-                class:active={activeTab === "Home"} 
-                onclick={() => handleNavigation("Home")}>
-                Home
-            </button>
             <button 
                 class:active={activeTab === "Planner"} 
                 onclick={() => handleNavigation("Planner")}>
@@ -43,10 +54,20 @@
                 Memory
             </button>
         </div>
-        <div class="profile">
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="profile"
+            onmouseenter={() => showDropdown = true}
+            onmouseleave={() => showDropdown = false}>
             <button class="profile-btn" aria-label="Open profile">
                 <i class="fa-regular fa-user fa-xl"></i>
             </button>
+            {#if showDropdown}
+                <div class="dropdown">
+                    <button onclick={() => handleNavigation("MyTrip")}>My Trips</button>
+                    <button onclick={() => handleNavigation("MyMemory")}>My Memories</button>
+                    <button>Log out</button>
+                </div>
+            {/if}
         </div>
     </div>
 </nav>
@@ -114,9 +135,57 @@
         opacity: 1;
     }
 
+    .dropdown {
+        position: absolute;
+        top: 3.5rem;
+        right: 2rem;
+        background: var(--white);
+        border: 1px solid var(--gray-200);
+        border-radius: 0.5rem;
+        padding: 0.5rem 0;
+        z-index: 999;
+        display: flex;
+        flex-direction: column;
+        min-width: 150px;
+    }
+
+    .dropdown button {
+        background: none;
+        border: none;
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        text-align: left;
+        color: var(--black);
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .dropdown button:hover {
+        background-color: var(--gray-100);
+    }
+
+    nav.dark-mode .dropdown {
+        background: var(--gray-900);
+        border: 1px solid var(--gray-700);
+    }
+
+    nav.dark-mode .dropdown button {
+        color: var(--white);
+    }
+
+    nav.dark-mode .dropdown button:hover {
+        background-color: var(--gray-800);
+    }
+
     nav.dark-mode {
         background-color: var(--black);
         border-bottom: 1px solid var(--gray-200);
+    }
+
+    nav.dark-mode .logo {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--white);
     }
 
     nav.dark-mode .menu button {
