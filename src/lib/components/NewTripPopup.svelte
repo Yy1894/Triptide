@@ -3,16 +3,18 @@
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
+    import { ref, child, get, set, onValue, push } from 'firebase/database';
+    import { db } from '../../firebase';
     import Button from './Button.svelte';
 
     export let showPopup = false;
-    export let fromPage = 'home';
 
     let destination = "";
+    let selectedPlace: any;
     let lastSelectedPlaceName = "";
     let startDate = "";
     let endDate = "";
-    let friends: string[] = [];
+    let tripmates: string[] = [];
     let currentEmail = "";
     let destinationError = false;
     let startDateError = false;
@@ -74,13 +76,14 @@
         autocomplete = new google.maps.places.Autocomplete(input, {
             types: ['(regions)']
         });
-        autocomplete.setFields(['name', 'formatted_address']);
+        autocomplete.setFields(['name', 'formatted_address', 'photos', 'place_id', 'geometry']);
         
         autocomplete.addListener('place_changed', () => {
             if (!autocomplete) return;
             const place = autocomplete.getPlace();
             if (place.name) {
                 destination = place.name;
+                selectedPlace = place;
                 lastSelectedPlaceName = input.value.trim();
                 destinationError = false;
             }
@@ -100,7 +103,7 @@
                     destinationError = false;
                     destination = "";
                 }
-            }, 200);
+            }, 400);
         });
     }
 
@@ -114,15 +117,15 @@
             event.preventDefault();
             const email = currentEmail.trim();
             
-            if (email && isValidEmail(email) && !friends.includes(email)) {
-                friends = [...friends, email];
+            if (email && isValidEmail(email) && !tripmates.includes(email)) {
+                tripmates = [...tripmates, email];
                 currentEmail = "";
             }
         }
     }
 
     function removeEmail(emailToRemove: string) {
-        friends = friends.filter(email => email !== emailToRemove);
+        tripmates = tripmates.filter(email => email !== emailToRemove);
     }
 
     function handleCancel() {
@@ -130,7 +133,7 @@
         destination = "";
         startDate = "";
         endDate = "";
-        friends = [];
+        tripmates = [];
         currentEmail = "";
         destinationError = false;
         startDateError = false;
@@ -142,7 +145,7 @@
         }
     }
 
-    function handleStart() {
+    async function handleStart() {
         destinationError = !destination;
         startDateError = !startDate;
         endDateError = !endDate;
@@ -162,12 +165,41 @@
         }
 
         if (destinationError || startDateError || endDateError) {
-            // alert('Please fill in all required fields: Destination, Start Date, End Date');
             return;
         }
         else {
-            goto(`/itinerary?from=${fromPage}`);
-            handleCancel();
+            const tid = crypto.randomUUID();
+
+            // Extract required place details
+            const placeDetails = {
+                name: selectedPlace.name,
+                formatted_address: selectedPlace.formatted_address,
+                photo: selectedPlace.photos?.[0]?.getUrl(),
+                location: {
+                    lat: selectedPlace.geometry.location.lat(),
+                    lng: selectedPlace.geometry.location.lng()
+                }
+            };
+
+            const tripData = {
+                tid,
+                destination: placeDetails,
+                startDate,
+                endDate,
+                tripmates,
+                created_at: new Date().toISOString()
+            };
+
+            try {
+                // Create a new reference for this specific trip using its ID
+                const tripRef = ref(db, `trips/${tid}`);
+                await set(tripRef, tripData);
+                console.log(`Trip saved to db with ID: ${tid}`);
+                goto(`/itinerary/${tid}`);
+                handleCancel();
+            } catch (error) {
+                console.error('Error saving trip:', error);
+            }
         }
     }
 
@@ -182,7 +214,7 @@
         <h1>Start a New Plan</h1>
         
         <div class="input-form">
-            <label for="destination-input">Destination</label>
+            <label for="destination">Destination</label>
             <div bind:this={destinationInput} class="destination-wrapper" id="destination"></div>
             {#if destinationError}
                 <p class="error-message">Please enter your destination</p>
@@ -229,7 +261,7 @@
                 </span>
             </label>
             <div class="email-input-container">
-                {#each friends as email}
+                {#each tripmates as email}
                     <div class="email-tag">
                         <span>{email}</span>
                         <button class="remove-email" onclick={() => removeEmail(email)}>×</button>
@@ -240,7 +272,7 @@
                     id="trip-friends"
                     bind:value={currentEmail}
                     onkeydown={handleEmailInput}
-                    placeholder={friends.length ? "" : "Enter email addresses"}
+                    placeholder={tripmates.length ? "" : "Enter email addresses"}
                 />
             </div>
         </div>

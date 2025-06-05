@@ -4,29 +4,65 @@
     import Button from '$lib/components/Button.svelte';
     import NewTripPopup from '$lib/components/NewTripPopup.svelte';
     import Nav from '$lib/components/Nav.svelte';
+    import { onMount } from 'svelte';
+    import { ref, onValue } from 'firebase/database';
+    import { db } from '../../firebase';
     
     interface Trip {
-        destination: string;
+        tid: string;
+        destination: {
+            name: string;
+            photo: string;
+            formatted_address: string;
+            location: {
+                lat: number;
+                lng: number;
+            }
+        };
         startDate: string;
         endDate: string;
-        imageUrl: string;
+        tripmates: string[];
+        created_at: string;
     }
 
     let activeTab = "Ongoing Trips";
     let showNewTripPopup = false;
     let contentContainer: HTMLElement;
     
-    // Sample data, replace with actual data later
-    const sample_trip = {
-        destination: "Taiwan",
-        startDate: "04.27.2025",
-        endDate: "04.30.2025",
-        imageUrl: ""
-    }
-    let ongoingTrips = Array(3).fill(sample_trip);
-    
-    // let pastTrips: Trip[] = [];
-    let pastTrips = Array(14).fill(sample_trip);
+    let ongoingTrips: Trip[] = [];
+    let pastTrips: Trip[] = [];
+
+    onMount(() => {
+        // Reference to the trips node
+        const tripsRef = ref(db, 'trips');
+
+        // Listen for changes in the trips data
+        onValue(tripsRef, (snapshot) => {
+            const trips: Trip[] = [];
+            snapshot.forEach((childSnapshot) => {
+                trips.push({
+                    tid: childSnapshot.key,
+                    ...childSnapshot.val()
+                });
+            });
+
+            console.log(trips);
+            // Get today's date at midnight for comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Filter trips based on end date
+            ongoingTrips = trips.filter(trip => {
+                const endDate = new Date(trip.endDate);
+                return endDate >= today;
+            }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+            pastTrips = trips.filter(trip => {
+                const endDate = new Date(trip.endDate);
+                return endDate < today;
+            }).sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()); // Sort past trips by most recent first
+        });
+    });
 
     function handleNewTrip() {
         showNewTripPopup = true;
@@ -71,7 +107,12 @@
                 {:else}
                     <div class="trips-grid">
                         {#each ongoingTrips as trip}
-                            <TripCard {...trip} />
+                            <TripCard 
+                                destination={trip.destination.name}
+                                startDate={new Date(trip.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                endDate={new Date(trip.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                image={trip.destination.photo}
+                            />
                         {/each}
                     </div>
                 {/if}
@@ -83,7 +124,12 @@
                 {:else}
                     <div class="trips-grid">
                         {#each pastTrips as trip}
-                            <TripCard {...trip} />
+                            <TripCard 
+                                destination={trip.destination.name}
+                                startDate={new Date(trip.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                endDate={new Date(trip.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                image={trip.destination.photo}
+                            />
                         {/each}
                     </div>
                 {/if}
@@ -95,7 +141,7 @@
         </div>
     </div>
 
-    <NewTripPopup bind:showPopup={showNewTripPopup} fromPage="trips" />
+    <NewTripPopup bind:showPopup={showNewTripPopup} />
 </main>
 
 <style>

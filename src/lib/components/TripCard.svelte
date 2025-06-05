@@ -6,7 +6,7 @@
 </script>
 
 <div class="trip-card">
-    <div class="image" style="background-image: url({image})">
+    <div class="image" style="background-image: url({image || ''})">
         <!-- Image placeholder if no image provided -->
         {#if !image}
             <div class="placeholder">

@@ -63,15 +63,19 @@
                 if (place && place.name) {
                     // If the place has photos, get the URL for the first photo
                     if (place.photos && place.photos.length > 0) {
-                        const photoOptions = {
-                            maxWidth: 400,
-                            maxHeight: 300
-                        };
-                        // Get the photo URL
-                        console.log(place.photos[0]);
-                        const photoUrl = place.photos[0].getUrl(photoOptions);
-                        place.photoUrl = photoUrl;
-                        console.log(place.photoUrl);
+                        try {
+                            const photoOptions = {
+                                maxWidth: 400,
+                                maxHeight: 300
+                            };
+                            place.photoUrl = place.photos[0].getUrl(photoOptions);
+                        } catch (error) {
+                            console.error('Error getting photo URL:', error);
+                            place.photoUrl = '/placeholder.jpeg';
+                        }
+                    }
+                    else {
+                        place.photoUrl = '/placeholder.jpeg';
                     }
                     
                     selectedPlace = place;

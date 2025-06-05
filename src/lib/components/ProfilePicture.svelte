@@ -1,32 +1,55 @@
-<script>
-    export let image = '';
-    export let marginLeft = '0px';
-    export let zIndex = '0';
+<script lang="ts">
+  export let friends = 1;
+  export let images: string[] = [];
 </script>
 
-<div
-  class="profile-picture"
-  style="margin-left: {marginLeft}; z-index: {zIndex}"
->
-  {#if image}
-    <img class="profile-img" src={image} alt="" />
-  {:else}
-    <img class="profile-img" src='profile-pic.png' alt="" />
-  {/if}
+<div class="profile-pictures">
+  {#each Array(friends) as _, i}
+      <div 
+          class="profile-picture"
+          style="z-index: {friends - i}; margin-left: {i === 0 ? '0' : '-20px'}"
+      >
+          {#if images[i]}
+              <img class="profile-img" src={images[i]} alt="Profile" />
+          {:else}
+              <div class="default-avatar">
+                  <i class="fa-solid fa-user"></i>
+              </div>
+          {/if}
+      </div>
+  {/each}
 </div>
 
 <style>
-    .profile-picture {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 50%;
-        border: 2px solid white;
-    }
+  .profile-pictures {
+      display: flex;
+      align-items: center;
+  }
 
-    .profile-img {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        object-fit: cover;
-    }
+  .profile-picture {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      border: 2px solid white;
+      background-color: var(--gray-100);
+      overflow: hidden;
+      flex-shrink: 0;
+  }
+
+  .profile-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+  }
+
+  .default-avatar {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      font-size: 1.2rem;
+  }
 </style>

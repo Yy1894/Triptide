@@ -29,7 +29,7 @@
   
   <BottomBar onClick={() => goto('/trips')} />
 
-  <NewTripPopup bind:showPopup={showNewTripPopup} fromPage="home" />
+  <NewTripPopup bind:showPopup={showNewTripPopup} />
 </main>
 
 <style>

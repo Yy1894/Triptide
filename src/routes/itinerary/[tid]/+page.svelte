@@ -1,5 +1,5 @@
 <script lang="ts">
-    import '../../app.css';
+    import '../../../app.css';
     import { goto } from '$app/navigation';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
@@ -7,6 +7,8 @@
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
     import { browser } from '$app/environment';
+    import { ref, onValue, update } from 'firebase/database';
+    import { db } from '../../../firebase';
     import ProfilePicture from '$lib/components/ProfilePicture.svelte';
     import BottomBar from '$lib/components/BottomBar.svelte';
     import Button from '$lib/components/Button.svelte';
@@ -14,17 +16,17 @@
     import AddPlaces from '$lib/components/AddPlaces.svelte';
     import PlaceCard from '$lib/components/PlaceCard.svelte';
 
-    // Placeholder data obtained from the popup
-    let destination = "Taiwan";
-    let desc = `Click to view all past trips to ${destination}`;
-    let startDate = "27/04/2025";
-    let endDate = "30/04/2025";
+    let tripData: any = null;
+    let tripDates: string[] = [];
     let places: string[] = [];
+    let tid: string;
     const place_placeholder = { name: 'Somewhere'}
     const places_placeholder = Array(3).fill(place_placeholder);
 
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
     let mapContainer: HTMLDivElement;
+    let expandedDates: Record<string, boolean> = {};
+    let map: google.maps.Map | null = null;
 
     onMount(async () => {
         if (!browser) return;
@@ -34,6 +36,9 @@
             return;
         }
         
+        // Get the trip ID from the URL
+        tid = page.params.tid;
+
         const loader = new Loader({
             apiKey: GOOGLE_PLACES_API_KEY,
             version: "weekly",
@@ -42,27 +47,52 @@
         });
 
         try {
-            await loader.importLibrary("maps");
+            const { Map } = await loader.importLibrary("maps");
+        
+            // Fetch trip data and initialize map when data is ready
+            const tripRef = ref(db, `trips/${tid}`);
+        
+            onValue(tripRef, (snapshot) => {
+                tripData = snapshot.val();
+                if (tripData) {
+                    // Generate array of dates between start and end date
+                    const start = new Date(tripData.startDate);
+                    const end = new Date(tripData.endDate);
+                    const dates = [];
+                    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+                        dates.push(date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+                    }
+                    tripDates = dates;
+                    
+                    // Initialize expanded states for dates
+                    expandedDates = Object.fromEntries(dates.map(date => [date, false]));
 
-            const map = new google.maps.Map(mapContainer, {
-                center: { lat: 23.5, lng: 121 }, // Taiwan's coordinates
-                zoom: 8,
+                    // Initialize placesToVisit from database or empty array
+                    placesToVisit = tripData.placesToVisit || [];
+                    
+                    // Initialize or update the map
+                    if (mapContainer && tripData.destination?.location) {
+                        if (!map) {
+                            map = new Map(mapContainer, {
+                                center: tripData.destination.location,
+                                zoom: 8,
+                            });
+                        } else {
+                            map.setCenter(tripData.destination.location);
+                        }
+                    }
+                }
             });
         } catch (error) {
             console.error('Error loading Google Maps:', error);
         }
     });
-    
-    // Array of dates between startDate to endDate
-    // TODO: implement generateTripDates(startDate, endDate)
-    let tripDates = ["27/04/2025", "28/04/2025", "29/04/2025", "30/04/2025"];
+
     let expandedSections = {
         explore: true,
         places_to_visit: true,
         itinerary: true
     };
-    let expandedDates: Record<string, boolean> = {};
-    tripDates.forEach(date => expandedDates[date] = false);
 
     let recommendedPlaces = [
         { name: "Place name" },
@@ -70,14 +100,22 @@
         { name: "Place name" }
     ];
 
-    let placesToVisit = [
-        { name: "Place name"},
-        { name: "Place name"},
-        { name: "Place name"}
-    ];
+    let placesToVisit: any[] = [];
 
-    function handleDeletePlace(index: number) {
-        placesToVisit = placesToVisit.filter((_, i) => i !== index);
+    async function handleDeletePlace(index: number) {
+        const newPlacesToVisit = placesToVisit.filter((_, i) => i !== index);
+        
+        try {
+            // Update the database
+            await update(ref(db, `trips/${tid}`), {
+                placesToVisit: newPlacesToVisit
+            });
+            
+            // Update local state
+            placesToVisit = newPlacesToVisit;
+        } catch (error) {
+            console.error('Error deleting place:', error);
+        }
     }
 
     function toggleSection(section: keyof typeof expandedSections) {
@@ -85,29 +123,33 @@
     }
 
     function handleBack() {
-        // Get the 'from' parameter from the URL
-        const fromPage = page.url.searchParams.get('from');
-        console.log(`fromPage = ${fromPage}`);
-        
-        if (fromPage === 'trips') {
-            goto('/trips');
-        } else {
-            goto('/');
-        }
+        goto('/trips');
     }
 
-    function handlePlaceSelected(place: google.maps.places.PlaceResult) {
+    function handlePastTrip() {
+        console.log(`see past trips to ${tripData?.destination?.name}`)
+    }
+
+    async function handlePlaceSelected(place: google.maps.places.PlaceResult) {
         const newPlace = {
             name: place.name || 'Unknown Place',
             desc: place.formatted_address || '',
-            image: (place as any).photoUrl || 'placeholder.jpeg'
+            image: (place as any).photoUrl || '/placeholder.jpeg'
         };
         
-        placesToVisit = [...placesToVisit, newPlace];
-    }
-    
-    function handlePastTrip() {
-        console.log(`see past trips to ${destination}`)
+        const updatedPlaces = [...placesToVisit, newPlace];
+        
+        try {
+            // Update the database
+            await update(ref(db, `trips/${tid}`), {
+                placesToVisit: updatedPlaces
+            });
+            
+            // Update local state
+            placesToVisit = updatedPlaces;
+        } catch (error) {
+            console.error('Error adding place:', error);
+        }
     }
 
     function handleCancel() {
@@ -126,10 +168,6 @@
         console.log(`please turn this into itinerary`);
     }
 
-    function showPastTrips() {
-        // TODO: Implement past trips view
-        console.log('Show past trips');
-    }
 </script>
 
 <main>
@@ -142,12 +180,12 @@
             </div>
             
             <div class="trip-info">
-                <h1>Trip to {destination}</h1>
-                <p class="date">{startDate} - {endDate}</p>
+                <h1>Trip to {tripData?.destination?.name || 'Loading...'}</h1>
+                <p class="date">{tripData?.startDate ? new Date(tripData.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''} - {tripData?.endDate ? new Date(tripData.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}</p>
             </div>
 
             <div class="tripmates">
-                <ProfilePicture friends={2} />
+                <ProfilePicture friends={tripData?.tripmates?.length || 0} />
             </div>
         </header>
 
@@ -160,7 +198,6 @@
                     </div>
                 </button>
 
-                <!-- TODO: implement the content part -->
                 {#if expandedSections.places_to_visit}
                     <div
                         class="section-content places"
@@ -222,10 +259,9 @@
 
     <div class="map-section">
         <div class="map-container" bind:this={mapContainer}></div>
-        <BottomBar title="Past Trips" desc={desc} onClick={handlePastTrip} />
+        <BottomBar title="Past Trips" desc="Click to view all past trips to {tripData?.destination?.name}" onClick={handlePastTrip} />
     </div>
 </main>
-
 
 <style>
     main {
@@ -370,6 +406,7 @@
         display: flex;
         gap: 0.5rem;
     }
+
     .button-group {
         position: sticky;
         flex-shrink: 0;
@@ -380,4 +417,4 @@
         gap: 1rem;
         margin-top: auto;
     }
-</style>
+</style> 

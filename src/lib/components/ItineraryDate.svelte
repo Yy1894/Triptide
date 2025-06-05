@@ -16,7 +16,7 @@
     const newPlace = {
       name: place.name || 'Unknown Place',
       desc: place.formatted_address || '',
-      image: (place as any).photoUrl || 'placeholder.jpeg',
+      image: (place as any).photoUrl || '/placeholder.jpeg',
       time: 'Add Time'
     };
     

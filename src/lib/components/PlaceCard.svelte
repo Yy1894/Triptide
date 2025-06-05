@@ -10,7 +10,7 @@
 
     const defaultPlace: Omit<Place, 'desc'> = {
         name: 'PlaceName',
-        image: 'placeholder.jpeg',
+        image: '/placeholder.jpeg',
         time: 'Add Time'
     };
 
