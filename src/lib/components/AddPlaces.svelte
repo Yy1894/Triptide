@@ -2,17 +2,22 @@
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
 
+    // Extend the PlaceResult type to include our custom photoUrl
+    interface ExtendedPlaceResult extends google.maps.places.PlaceResult {
+        photoUrl?: string;
+    }
+
     export let onPlaceSelected: (place: google.maps.places.PlaceResult) => void;
     export let countryRestriction: string | undefined = undefined;
     export let placeTypes: string[] = ['establishment'];
     export let placeholder = 'Add a place';
-    export let id = 'add-places';
+    export let id = crypto.randomUUID(); // Generate unique ID for each instance
 
     let inputContainer: HTMLDivElement;
     let inputWrapper: HTMLDivElement;
     let showAddButton = false;
     let lastSelectedPlaceName = '';
-    let selectedPlace: google.maps.places.PlaceResult | null = null;
+    let selectedPlace: ExtendedPlaceResult | null = null;
     let inputElement: HTMLInputElement;
     
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
@@ -35,7 +40,8 @@
 
             const input = document.createElement('input');
             input.type = 'text';
-            input.id = id;
+            input.id = `places-input-${id}`;
+            input.className = 'places-input';
             input.placeholder = placeholder;
 
             inputWrapper.appendChild(input);
@@ -50,12 +56,24 @@
             }
 
             const autocomplete = new google.maps.places.Autocomplete(input, autocompleteOptions);
-            autocomplete.setFields(['name', 'formatted_address', 'photos', 'place_id']);
-            // TODO: how to get the photos?
+            autocomplete.setFields(['name', 'formatted_address', 'photos', 'place_id', 'geometry']);
 
             autocomplete.addListener('place_changed', () => {
-                const place = autocomplete.getPlace();
+                const place = autocomplete.getPlace() as ExtendedPlaceResult;
                 if (place && place.name) {
+                    // If the place has photos, get the URL for the first photo
+                    if (place.photos && place.photos.length > 0) {
+                        const photoOptions = {
+                            maxWidth: 400,
+                            maxHeight: 300
+                        };
+                        // Get the photo URL
+                        console.log(place.photos[0]);
+                        const photoUrl = place.photos[0].getUrl(photoOptions);
+                        place.photoUrl = photoUrl;
+                        console.log(place.photoUrl);
+                    }
+                    
                     selectedPlace = place;
                     lastSelectedPlaceName = input.value.trim();
                     showAddButton = true;
@@ -150,7 +168,7 @@
         color: var(--planner-400);
     }
 
-    :global(input#add-places) {
+    :global(.places-input) {
         width: 100%;
         box-sizing: border-box;
         padding: 0.75rem 0.75rem 0.75rem 2.5rem;
@@ -163,12 +181,12 @@
         transition: all 0.2s ease;
     }
 
-    :global(input#add-places:hover) {
+    :global(.places-input:hover) {
         background-color: var(--gray-100);
         border-color: var(--gray-100);
     }
 
-    :global(input#add-places:focus) {
+    :global(.places-input:focus) {
         outline-color: var(--planner-400);
         background-color: white;
     }

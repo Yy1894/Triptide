@@ -24,6 +24,22 @@
     
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
+    // Add reactive statements to clear errors when valid input is provided
+    $: if (destination) destinationError = false;
+    $: if (startDate) startDateError = false;
+    $: if (endDate) endDateError = false;
+    
+    // Clear date order error when either date changes
+    $: if (startDate && endDate) {
+        const startDateTime = new Date(startDate).getTime();
+        const endDateTime = new Date(endDate).getTime();
+        if (endDateTime >= startDateTime) {
+            dateOrderError = false;
+            startDateError = false;
+            endDateError = false;
+        }
+    }
+
     onMount(async () => {
         if (!GOOGLE_PLACES_API_KEY) {
             console.error('Google Maps API key is missing');
@@ -231,7 +247,7 @@
 
         <div class="button-group">
             <Button text="Cancel" type="gray" onClick={handleCancel} />
-            <Button text="Start" type="blue" onClick={handleStart} />
+            <Button text="Start" type="blue" onClick={handleStart} disabled={destinationError || startDateError || endDateError}/>
         </div>
     </div>
 </div>

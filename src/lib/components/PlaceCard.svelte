@@ -191,7 +191,8 @@
 
     .place-image.detailed {
         width: 30%;
-        height: 100%;
+        aspect-ratio: 16 / 9;
+        height: auto;
         border-radius: 20px;
     }
 

@@ -3,6 +3,10 @@
     import { onMount } from 'svelte';
 
     onMount(() => {
+        /**
+         * 
+         * @param e {any}
+         */
         const handleClickOutside = (e) => {
             if (!e.target.closest('.profile')) {
                 showDropdown = false;

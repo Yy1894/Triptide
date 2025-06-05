@@ -3,13 +3,14 @@
     export let text = 'Button';
     export let type = 'single';
     export let onClick = () => {};
-  </script>
+    export let disabled = false;
+</script>
   
-  <button class="{type}" onclick={onClick}>
+<button class="{type}" on:click={onClick} {disabled}>
     {text}
-  </button>
+</button>
   
-  <style>
+<style>
     button {
         border: none;
         padding: 0.8rem 1.5rem;
@@ -18,6 +19,17 @@
         font-weight: 500;
         font-size: 1rem;
         transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+        transform: none;
+    }
+
+    button:disabled:hover {
+        opacity: 0.5;
+        transform: none;
     }
 
     .single {
@@ -73,4 +85,4 @@
     .orange:hover {
         background-color: var(--memory-400);
     }
-  </style>  
+</style>  

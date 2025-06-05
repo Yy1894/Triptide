@@ -100,7 +100,7 @@
         const newPlace = {
             name: place.name || 'Unknown Place',
             desc: place.formatted_address || '',
-            img: place.photos ? place.photos[0].getUrl() : 'placeholder.jpeg'
+            image: (place as any).photoUrl || 'placeholder.jpeg'
         };
         
         placesToVisit = [...placesToVisit, newPlace];
@@ -116,6 +116,14 @@
 
     function handleSave() {
         console.log('save update');
+    }
+
+    function handleRecommendPlaces() {
+        console.log(`will give recommendation using OpenAI`);
+    }
+
+    function handleTurnIntoItinerary() {
+        console.log(`please turn this into itinerary`);
     }
 
     function showPastTrips() {
@@ -173,6 +181,11 @@
                             onPlaceSelected={handlePlaceSelected}
                             countryRestriction="tw"
                         />
+
+                        <div class="places-buttons">
+                            <Button text="Recommend Places" type="blue" onClick={handleRecommendPlaces} />
+                            <Button text="Turn into Itinerary" type="blue" onClick={handleTurnIntoItinerary} />
+                        </div>
                     </div>
                 {/if}
             </section>
@@ -353,6 +366,11 @@
         margin-left: 0.5rem;
     }
 
+    .places-buttons {
+        margin-top: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+    }
     .button-group {
         position: sticky;
         flex-shrink: 0;
