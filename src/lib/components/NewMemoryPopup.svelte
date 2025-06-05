@@ -2,19 +2,70 @@
     import '../../app.css';
     import Button from './Button.svelte';
     import { onMount } from 'svelte';
+    import { Loader } from '@googlemaps/js-api-loader';
 
     export let showPopup = false;
-    export let locations = [];
     export let onAddMemory = () => {};
     export let onCancel = () => {};
 
+    let destination = "";
+    let lastSelectedPlaceName = "";
+    let startDate = "";
+    let endDate = "";
+    let destinationError = false;
+    let startDateError = false;
+    let endDateError = false;
+    let dateOrderError = false;
+    let destinationInput: HTMLDivElement;
+    let autocomplete: google.maps.places.Autocomplete | null = null;
+    let isGoogleLoaded = false;
+    let dragActive = false;
     let selectedLocation = '';
     let customLocation = '';
+    let customLocationInput: HTMLInputElement;
     let images = [];
-    let dragActive = false;
 
-    let startDate = '';
-    let endDate = '';
+    let showLocationError = false;
+    let showImageError = false;
+
+    const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
+
+    onMount(async () => {
+        if (!GOOGLE_PLACES_API_KEY) {
+            console.error('Google Maps API key is missing');
+            return;
+        }
+
+        const loader = new Loader({
+            apiKey: GOOGLE_PLACES_API_KEY,
+            version: "weekly",
+            libraries: ["places"],
+            language: 'en'
+        });
+
+        try {
+            await loader.importLibrary("places");
+            isGoogleLoaded = true;
+        } catch (error) {
+            console.error('Error loading Places Autocomplete:', error);
+        }
+    });
+
+    $: if (isGoogleLoaded && isCustomLocation() && customLocationInput) {
+        const autocompleteCustom = new google.maps.places.Autocomplete(customLocationInput, {
+            types: ['(regions)']
+        });
+
+        autocompleteCustom.setFields(['name', 'formatted_address']);
+
+        autocompleteCustom.addListener('place_changed', () => {
+            const place = autocompleteCustom.getPlace();
+            if (place.name) {
+                customLocation = place.name;
+                showLocationError = false;
+            }
+        });
+    }
 
     function handleFiles(files) {
         for (const file of files) {
@@ -70,9 +121,6 @@
         images = images.filter(img => img !== imageToRemove);
     }
 
-    let showLocationError = false;
-    let showImageError = false;
-
     function handleAddMemory() {
         showLocationError = selectedLocation === '' || (selectedLocation === 'custom' && customLocation.trim() === '');
         showImageError = images.length === 0;
@@ -83,6 +131,9 @@
         onAddMemory({ location: finalLocation, images, startDate, endDate });
         reset();
     }
+
+    // needs to link with plan data set
+    const locations = ['Paris', 'Tokyo', 'New York'];
 </script>
 
 {#if showPopup}
@@ -107,6 +158,7 @@
                     <input 
                         type="text" 
                         id="custom-location"
+                        bind:this={customLocationInput}
                         bind:value={customLocation}
                         placeholder="Type your location"
                     />
@@ -114,6 +166,7 @@
                         <p class="error-message">Please enter a location.</p>
                     {/if}
                 </div>
+
                 <div class="date-group">
                     <div class="input-form">
                         <label for="start-date">Start Date</label>
@@ -182,7 +235,6 @@
         </div>
     </div>
 {/if}
-
 
 <style>
     *, *::before, *::after {

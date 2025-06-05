@@ -278,7 +278,7 @@
     }
 
     .error-message {
-        color: var(--memory-600);
+        color: var(--memory-500);
         margin: 0.5rem 0 0 0;
         font-size: 0.8rem;
     }
