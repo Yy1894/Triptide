@@ -7,8 +7,10 @@
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
     import { browser } from '$app/environment';
-    import { ref, onValue, update } from 'firebase/database';
+    import { ref, onValue, update, get } from 'firebase/database';
     import { db } from '../../../firebase';
+    import { countryMappings } from '$lib/constants/CountryMappings';
+    import { Colors } from '$lib/constants/Colors';
     import ProfilePicture from '$lib/components/ProfilePicture.svelte';
     import BottomBar from '$lib/components/BottomBar.svelte';
     import Button from '$lib/components/Button.svelte';
@@ -16,8 +18,9 @@
     import AddPlaces from '$lib/components/AddPlaces.svelte';
     import PlaceCard from '$lib/components/PlaceCard.svelte';
     import PastTripsPanel from '$lib/components/PastTripsPanel.svelte';
-    import { countryMappings } from '$lib/constants/CountryMappings';
-    import { Colors } from '$lib/constants/Colors';
+    import { getPlaceRecommendations } from '$lib/services/openai';
+    import RecommendationPopup from '$lib/components/RecommendationPopup.svelte';
+    import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 
     let tripData: any = null;
     let tripDates: string[] = [];
@@ -57,6 +60,73 @@
     let map: google.maps.Map | null = null;
     let markers: google.maps.marker.AdvancedMarkerElement[] = [];
     let showPastTrips = false;
+    let showRecommendationPopup = false;
+    let isGeneratingRecommendations = false;
+
+    let pastTripsData: any[] = [];
+
+    /**
+     * Check if there are any past trips to the same destination
+     * and fetch their places data
+     */
+    async function checkPastTrips(destinationName: string): Promise<boolean> {
+        try {
+            const tripsRef = ref(db, 'trips');
+            const snapshot = await get(tripsRef);
+            if (!snapshot.exists()) return false;
+
+            // Get today's date at midnight for comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Filter past trips for this destination
+            pastTripsData = Object.entries(snapshot.val())
+                .map(([tripId, data]) => ({
+                    tid: tripId,
+                    ...data as any
+                }))
+                .filter(trip => {
+                    const endDate = new Date(trip.endDate);
+                    return trip.tid !== tid && // not current trip
+                           endDate < today && // trip is in the past
+                           trip.destination.name === destinationName;
+                })
+                .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()); // Most recent first
+
+            return pastTripsData.length > 0;
+        } catch (error) {
+            console.error('Error checking past trips:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Get all places from past trips to this destination
+     */
+    function getPastPlaces(): string[] {
+        const places = new Set<string>();
+
+        pastTripsData.forEach(trip => {
+            // Add places from placesToVisit
+            if (trip.placesToVisit) {
+                trip.placesToVisit.forEach((place: any) => places.add(place.name));
+            }
+
+            // Add places from itineraryDate
+            if (trip.itineraryDate) {
+                Object.values(trip.itineraryDate).forEach((dateData: any) => {
+                    dateData.placesPlanned?.forEach((place: any) => places.add(place.name));
+                });
+            }
+        });
+
+        return Array.from(places);
+    }
+
+    // When tripData is loaded, check for past trips
+    $: if (tripData?.destination?.name) {
+        checkPastTrips(tripData.destination.name);
+    }
 
     /**
      * Get the ISO 3166-1 alpha-2 country code from /constants/CountryMappings.ts
@@ -288,16 +358,106 @@
         }
     }
 
-    function handleCancel() {
-        console.log('cancel update');
+    async function handleRecommendPlaces() {
+        if (!tripData?.destination?.name) return;
+        console.log("recommend places");
+
+        // Check for past trips
+        const hasPastTrips = await checkPastTrips(tripData.destination.name);
+        
+        if (hasPastTrips) {
+            console.log("has past trips");
+            showRecommendationPopup = true;
+        } else {
+            // If no past trips, proceed with getting new recommendations
+            await getRecommendations('new');
+        }
     }
 
-    function handleSave() {
-        console.log('save update');
+    async function handleRecommendationSelect(type: 'new' | 'old' | 'mix') {
+        showRecommendationPopup = false;
+        await getRecommendations(type);
     }
 
-    function handleRecommendPlaces() {
-        console.log(`will give recommendation using OpenAI`);
+    function handleRecommendationCancel() {
+        showRecommendationPopup = false;
+    }
+
+    async function getRecommendations(recommendationType: 'new' | 'old' | 'mix') {
+        isGeneratingRecommendations = true;
+        try {
+            // Get current places from both placesToVisit and placesPlanned
+            const currentPlaces = [
+                ...placesToVisit.map(p => p.name),
+                ...Object.values(placesPlanned).flatMap(date => 
+                    date.placesPlanned?.map(p => p.name) || []
+                )
+            ];
+
+            // Get past places from previous trips
+            const pastPlaces = getPastPlaces();
+
+            // Get recommendations from OpenAI
+            const recommendations = await getPlaceRecommendations(
+                tripData.destination.name,
+                currentPlaces,
+                pastPlaces,
+                recommendationType
+            );
+
+            // For each recommendation, search Google Places API for details
+            const placesService = new google.maps.places.PlacesService(map!);
+            
+            for (const rec of recommendations) {
+                const request = {
+                    query: `${rec.name} ${tripData.destination.name}`,
+                    fields: ['name', 'formatted_address', 'photos', 'place_id', 'geometry']
+                };
+
+                try {
+                    const results = await new Promise<google.maps.places.PlaceResult[]>((resolve, reject) => {
+                        placesService.textSearch(request, (results, status) => {
+                            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                                resolve(results);
+                            } else {
+                                reject(new Error(`Places API error: ${status}`));
+                            }
+                        });
+                    });
+
+                    if (results.length > 0) {
+                        const place = results[0];
+                        const photoUrl = place.photos?.[0]?.getUrl();
+                        
+                        const newPlace = {
+                            name: place.name || rec.name,
+                            desc: place.formatted_address || '',
+                            image: photoUrl || '/placeholder.jpeg',
+                            geometry: place.geometry?.location ? {
+                                lat: place.geometry.location.lat(),
+                                lng: place.geometry.location.lng()
+                            } : undefined
+                        };
+
+                        // Add to placesToVisit
+                        placesToVisit = [...placesToVisit, newPlace];
+                    }
+                } catch (error) {
+                    console.error(`Error fetching place details for ${rec.name}:`, error);
+                }
+            }
+
+            // Update the database with new places
+            await update(ref(db, `trips/${tid}`), {
+                placesToVisit
+            });
+
+        } catch (error) {
+            console.error('Error getting recommendations:', error);
+            alert('Failed to get recommendations. Please try again.');
+        } finally {
+            isGeneratingRecommendations = false;
+        }
     }
 
     function handleTurnIntoItinerary() {
@@ -407,12 +567,6 @@
                     </div>
                 {/if}
             </section>
-
-            <div class="button-group">
-                <Button text="Cancel" type="gray" onClick={handleCancel}/>
-                <!-- later edit this so button turns blue only when there is changes to the plan -->
-                <Button text="Save" type="blue" onClick={handleSave} />
-            </div>
         </div>
     </div>
 
@@ -420,11 +574,24 @@
         <div class="map-container" bind:this={mapContainer}></div>
         <BottomBar title="Past Trips" desc="Click to view all past trips to {tripData?.destination?.name}" onClick={handlePastTrip} />
         <PastTripsPanel 
-            showPanel={showPastTrips} 
-            destination={tripData?.destination?.name || ''} 
-            onClose={() => showPastTrips = false} 
+            showPanel={showPastTrips}
+            destination={tripData?.destination?.name || ''}
+            pastTrips={pastTripsData}
+            onClose={() => showPastTrips = false}
         />
     </div>
+
+    <RecommendationPopup 
+        showPopup={showRecommendationPopup}
+        destination={tripData?.destination?.name || ''}
+        onSelect={handleRecommendationSelect}
+        onCancel={handleRecommendationCancel}
+    />
+
+    <LoadingOverlay 
+        show={isGeneratingRecommendations}
+        message="Generating Recommended Places"
+    />
 </main>
 
 <style>
@@ -571,16 +738,5 @@
         margin-top: 0.5rem;
         display: flex;
         gap: 0.5rem;
-    }
-
-    .button-group {
-        position: sticky;
-        flex-shrink: 0;
-        background-color: var(--white);
-        padding: 1.5rem 0;
-        bottom: 0;
-        display: flex;
-        gap: 1rem;
-        margin-top: auto;
     }
 </style> 

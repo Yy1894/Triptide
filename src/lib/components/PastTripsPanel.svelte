@@ -2,15 +2,12 @@
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import TripCard from './TripCard.svelte';
-    import { ref, onValue } from 'firebase/database';
-    import { db } from '../../firebase';
 
     export let showPanel = false;
     export let destination = '';
+    export let pastTrips: any[] = [];
     export let onClose = () => {};
 
-    let pastTrips: any[] = [];
-    let loading = true;
     let tripsContainer: HTMLElement;
     let showLeftButton = false;
     let showRightButton = true;
@@ -43,35 +40,6 @@
             behavior: 'smooth'
         });
     }
-
-    $: if (showPanel && destination) {
-        // Fetch past trips for this destination
-        const tripsRef = ref(db, 'trips');
-        onValue(tripsRef, (snapshot) => {
-            const allTrips: any[] = [];
-            snapshot.forEach((childSnapshot) => {
-                const trip = {
-                    tid: childSnapshot.key,
-                    ...childSnapshot.val()
-                };
-                allTrips.push(trip);
-            });
-
-            // Get today's date at midnight for comparison
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // Filter past trips for this destination
-            pastTrips = allTrips
-                .filter(trip => {
-                    const endDate = new Date(trip.endDate);
-                    return endDate < today && trip.destination.name === destination;
-                })
-                .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()); // Most recent first
-
-            loading = false;
-        });
-    }
 </script>
 
 {#if showPanel}
@@ -87,9 +55,7 @@
         </div>
 
         <div class="content">
-            {#if loading}
-                <div class="message">Loading...</div>
-            {:else if pastTrips.length === 0}
+            {#if pastTrips.length === 0}
                 <div class="message">This is your first trip to {destination}!</div>
             {:else}
                 <div class="trips-scroll-container">

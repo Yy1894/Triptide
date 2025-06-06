@@ -43,6 +43,18 @@
         transform: scale(1.02);
     }
 
+    .full-gray {
+        width: 100%;
+        background-color: var(--gray-50);
+        color: var(--gray-400);
+    }
+
+    .full-gray:hover {
+        background-color: var(--gray-100);
+        color: var(--gray-600);
+        transform: scale(1.02);
+    }
+
     .blue {
         width: 50%;
         background-color: var(--planner-400);
