@@ -15,18 +15,134 @@
     import ItineraryDate from '$lib/components/ItineraryDate.svelte';
     import AddPlaces from '$lib/components/AddPlaces.svelte';
     import PlaceCard from '$lib/components/PlaceCard.svelte';
+    import PastTripsPanel from '$lib/components/PastTripsPanel.svelte';
+    import { countryMappings } from '$lib/constants/CountryMappings';
+    import { Colors } from '$lib/constants/Colors';
 
     let tripData: any = null;
     let tripDates: string[] = [];
-    let places: string[] = [];
     let tid: string;
-    const place_placeholder = { name: 'Somewhere'}
-    const places_placeholder = Array(3).fill(place_placeholder);
+    let countryCode = 'tw'; // country code to restrict the autocomplete search
+    
+    // the place data structure saved in the database
+    interface Place {
+        name: string;
+        desc?: string;
+        image?: string;
+        time?: string;
+        geometry?: {
+            lat: number;
+            lng: number;
+        };
+    }
+
+    interface DatePlaces {
+        placesPlanned: Place[];
+    }
+
+    let placesPlanned: Record<string, DatePlaces> = {};
+
+    /**
+     * Convert date format from DD/MM/YYYY to DD-MM-YYYY
+     * 
+     * @param date the date to be converted
+     */
+    function convertDateFormat(date: string): string {
+        return date.replace(/\//g, '-');
+    }
 
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
     let mapContainer: HTMLDivElement;
     let expandedDates: Record<string, boolean> = {};
     let map: google.maps.Map | null = null;
+    let markers: google.maps.marker.AdvancedMarkerElement[] = [];
+    let showPastTrips = false;
+
+    /**
+     * Get the ISO 3166-1 alpha-2 country code from /constants/CountryMappings.ts
+     * 
+     * @param formattedAddress the address of the destination
+     * @returns the country code of the input
+     */
+    function getCountryCode(formattedAddress: string): string {
+        // get the country from the last part of formatted address
+        const parts = formattedAddress.split(',');
+        const country = parts[parts.length - 1].trim();
+
+        // check if the mapping is available in /constants/CountryMappings.ts
+        if (countryMappings[country]) {
+            return countryMappings[country];
+        }
+
+        // if no mapping found, convert to lowercase and take first two letters
+        // might not always be correct
+        return country.toLowerCase().slice(0, 2);
+    }
+
+    function clearMarkers() {
+        if (markers.length > 0) {
+            markers.forEach(marker => marker.map = null);
+            markers = [];
+        }
+    }
+
+    async function updateMapMarkers() {
+        if (!map) return;
+        
+        // clear existing markers
+        clearMarkers();
+
+        const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+
+        // add markers for placesToVisit (red color)
+        placesToVisit.forEach(place => {
+            if (place.geometry?.lat && place.geometry?.lng) {
+                const pin = new PinElement({
+                    background: Colors.memory.med400,
+                    borderColor: Colors.memory.dark700,
+                    glyphColor: Colors.white,
+                });
+
+                const marker = new AdvancedMarkerElement({
+                    map,
+                    position: { lat: place.geometry.lat, lng: place.geometry.lng },
+                    title: place.name,
+                    content: pin.element
+                });
+                markers.push(marker);
+            }
+        });
+
+        // add markers for placesPlanned (blue color)
+        Object.values(placesPlanned).forEach(dateData => {
+            if (!dateData?.placesPlanned) return;
+            
+            dateData.placesPlanned.forEach(place => {
+                if (place.geometry?.lat && place.geometry?.lng) {
+                    const pin = new PinElement({
+                        background: Colors.planner.med400,
+                        borderColor: Colors.planner.dark700,
+                        glyphColor: Colors.white,
+                    });
+
+                    const marker = new AdvancedMarkerElement({
+                        map,
+                        position: { lat: place.geometry.lat, lng: place.geometry.lng },
+                        title: place.name,
+                        content: pin.element
+                    });
+                    markers.push(marker);
+                }
+            });
+        });
+    }
+
+    // Update markers whenever places change
+    $: {
+        if (placesToVisit || placesPlanned) {
+            updateMapMarkers();
+        }
+    }
 
     onMount(async () => {
         if (!browser) return;
@@ -49,13 +165,18 @@
         try {
             const { Map } = await loader.importLibrary("maps");
         
-            // Fetch trip data and initialize map when data is ready
+            // fetch trip data and initialize map when data is ready
             const tripRef = ref(db, `trips/${tid}`);
         
             onValue(tripRef, (snapshot) => {
                 tripData = snapshot.val();
                 if (tripData) {
-                    // Generate array of dates between start and end date
+                    // update country code based on destination
+                    if (tripData.destination?.formatted_address) {
+                        countryCode = getCountryCode(tripData.destination.formatted_address);
+                    }
+
+                    // generate array of dates between start and end date
                     const start = new Date(tripData.startDate);
                     const end = new Date(tripData.endDate);
                     const dates = [];
@@ -64,18 +185,29 @@
                     }
                     tripDates = dates;
                     
-                    // Initialize expanded states for dates
+                    // initialize expanded states for dates
                     expandedDates = Object.fromEntries(dates.map(date => [date, false]));
 
-                    // Initialize placesToVisit from database or empty array
+                    // initialize placesToVisit from database or empty array
                     placesToVisit = tripData.placesToVisit || [];
+
+                    // initialize placesPlanned from database or empty object
+                    placesPlanned = {};
+                    if (tripData.itineraryDate) {
+                        // convert keys from DD/MM/YYYY to DD-MM-YYYY if needed
+                        Object.entries(tripData.itineraryDate).forEach(([key, value]) => {
+                            const formattedKey = key.includes('/') ? convertDateFormat(key) : key;
+                            placesPlanned[formattedKey] = value as DatePlaces;
+                        });
+                    }
                     
-                    // Initialize or update the map
+                    // initialize or update the map
                     if (mapContainer && tripData.destination?.location) {
                         if (!map) {
                             map = new Map(mapContainer, {
                                 center: tripData.destination.location,
-                                zoom: 8,
+                                zoom: 10,
+                                mapId: 'ITINERARY_MAP_ID'
                             });
                         } else {
                             map.setCenter(tripData.destination.location);
@@ -127,25 +259,29 @@
     }
 
     function handlePastTrip() {
-        console.log(`see past trips to ${tripData?.destination?.name}`)
+        showPastTrips = !showPastTrips;
     }
 
     async function handlePlaceSelected(place: google.maps.places.PlaceResult) {
         const newPlace = {
             name: place.name || 'Unknown Place',
             desc: place.formatted_address || '',
-            image: (place as any).photoUrl || '/placeholder.jpeg'
+            image: (place as any).photoUrl || '/placeholder.jpeg',
+            geometry: place.geometry?.location ? {
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng()
+            } : undefined
         };
         
         const updatedPlaces = [...placesToVisit, newPlace];
         
         try {
-            // Update the database
+            // update the database
             await update(ref(db, `trips/${tid}`), {
                 placesToVisit: updatedPlaces
             });
             
-            // Update local state
+            // update local state
             placesToVisit = updatedPlaces;
         } catch (error) {
             console.error('Error adding place:', error);
@@ -166,6 +302,26 @@
 
     function handleTurnIntoItinerary() {
         console.log(`please turn this into itinerary`);
+    }
+
+    async function handlePlacePlanned(date: string, places: Place[]) {
+        const formattedDate = convertDateFormat(date);
+        try {
+            // Update the database
+            await update(ref(db, `trips/${tid}/itineraryDate/${formattedDate}`), {
+                placesPlanned: places
+            });
+            
+            // Update local state
+            placesPlanned = {
+                ...placesPlanned,
+                [formattedDate]: {
+                    placesPlanned: places
+                }
+            };
+        } catch (error) {
+            console.error('Error updating places planned:', error);
+        }
     }
 
 </script>
@@ -215,7 +371,7 @@
 
                         <AddPlaces
                             onPlaceSelected={handlePlaceSelected}
-                            countryRestriction="tw"
+                            countryRestriction={countryCode}
                         />
 
                         <div class="places-buttons">
@@ -241,8 +397,11 @@
                     >
                         {#each tripDates as date}
                             <ItineraryDate 
-                                {date} 
+                                date={date}
                                 isExpanded={expandedDates[date]}
+                                places={placesPlanned[convertDateFormat(date)]?.placesPlanned || []}
+                                onPlacesUpdate={(places) => handlePlacePlanned(date, places)}
+                                countryCode={countryCode}
                             />
                         {/each} 
                     </div>
@@ -260,6 +419,11 @@
     <div class="map-section">
         <div class="map-container" bind:this={mapContainer}></div>
         <BottomBar title="Past Trips" desc="Click to view all past trips to {tripData?.destination?.name}" onClick={handlePastTrip} />
+        <PastTripsPanel 
+            showPanel={showPastTrips} 
+            destination={tripData?.destination?.name || ''} 
+            onClose={() => showPastTrips = false} 
+        />
     </div>
 </main>
 
@@ -285,6 +449,8 @@
         flex-direction: column;
         height: 100vh;
         background-color: #84D7EB;
+        position: relative;
+        overflow: hidden;
     }
 
     .map-container {
@@ -296,8 +462,8 @@
         display: flex;
         flex-shrink: 0;
         align-items: center;
-        gap: 1rem;
-        padding: 0 2rem 1.5rem 1rem;
+        gap: 0.75rem;
+        padding: 0 2rem 1.5rem 0.75rem;
         border-bottom: 1px solid var(--gray-100);
     }
 
@@ -311,10 +477,10 @@
         border: none;
         font-size: 1.2rem;
         cursor: pointer;
-        padding: 0.5rem;
+        padding: 0.5rem 0.75rem;
         color: var(--gray-400);
         border-radius: 50%;
-        transition: background-color 0.2s;
+        transition: all 0.2s ease;
     }
 
     .back-btn:hover {

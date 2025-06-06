@@ -6,7 +6,21 @@
 
   export let date;
   export let isExpanded = true;
-  export let places: { name: string; desc?: string; image?: string; time?: string; }[] = [];
+  export let countryCode = 'tw'; // Default to Taiwan if not provided
+  
+  interface Place {
+    name: string;
+    desc?: string;
+    image?: string;
+    time?: string;
+    geometry?: {
+      lat: number;
+      lng: number;
+    };
+  }
+
+  export let places: Place[] = [];
+  export let onPlacesUpdate: (places: Place[]) => void;
 
   function toggleDate() {
     isExpanded = !isExpanded;
@@ -17,14 +31,22 @@
       name: place.name || 'Unknown Place',
       desc: place.formatted_address || '',
       image: (place as any).photoUrl || '/placeholder.jpeg',
-      time: 'Add Time'
+      time: 'Add Time',
+      geometry: place.geometry?.location ? {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng()
+      } : undefined
     };
     
-    places = [...places, newPlace];
+    const updatedPlaces = [...places, newPlace];
+    places = updatedPlaces;
+    onPlacesUpdate(updatedPlaces);
   }
 
   function handleDeletePlace(index: number) {
-    places = places.filter((_, i) => i !== index);
+    const updatedPlaces = places.filter((_, i) => i !== index);
+    places = updatedPlaces;
+    onPlacesUpdate(updatedPlaces);
   }
 </script>
   
@@ -48,7 +70,7 @@
       <div class="add-places-container">
         <AddPlaces 
           onPlaceSelected={handlePlaceSelected}
-          countryRestriction="tw"
+          countryRestriction={countryCode}
         />
       </div>
     </div>

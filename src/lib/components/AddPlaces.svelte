@@ -210,4 +210,8 @@
     :global(.pac-item:hover) {
         background-color: var(--gray-50);
     }
+
+    :global(.pac-container:after) {
+        display: none;
+    }
 </style> 
