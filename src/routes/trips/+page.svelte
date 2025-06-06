@@ -33,10 +33,10 @@
     let pastTrips: Trip[] = [];
 
     onMount(() => {
-        // Reference to the trips node
+        // reference to the trips node
         const tripsRef = ref(db, 'trips');
 
-        // Listen for changes in the trips data
+        // listen for changes in the trips data
         onValue(tripsRef, (snapshot) => {
             const trips: Trip[] = [];
             snapshot.forEach((childSnapshot) => {
@@ -46,12 +46,12 @@
                 });
             });
 
-            console.log(trips);
-            // Get today's date at midnight for comparison
+            // get today's date at midnight for comparison
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Filter trips based on end date
+            // filter trips based on end date
+            // end date > today = pastTrips
             ongoingTrips = trips.filter(trip => {
                 const endDate = new Date(trip.endDate);
                 return endDate >= today;
@@ -60,7 +60,7 @@
             pastTrips = trips.filter(trip => {
                 const endDate = new Date(trip.endDate);
                 return endDate < today;
-            }).sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()); // Sort past trips by most recent first
+            }).sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()); // sort past trips by most recent first
         });
     });
 
@@ -112,6 +112,7 @@
                                 startDate={new Date(trip.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 endDate={new Date(trip.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 image={trip.destination.photo}
+                                tid={trip.tid}
                             />
                         {/each}
                     </div>
@@ -129,6 +130,7 @@
                                 startDate={new Date(trip.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 endDate={new Date(trip.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 image={trip.destination.photo}
+                                tid={trip.tid}
                             />
                         {/each}
                     </div>
