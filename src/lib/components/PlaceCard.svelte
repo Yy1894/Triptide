@@ -10,7 +10,7 @@
 
     const defaultPlace: Omit<Place, 'desc'> = {
         name: 'PlaceName',
-        image: 'placeholder.jpeg',
+        image: '/placeholder.jpeg',
         time: 'Add Time'
     };
 
@@ -191,7 +191,8 @@
 
     .place-image.detailed {
         width: 30%;
-        height: 100%;
+        aspect-ratio: 16 / 9;
+        height: auto;
         border-radius: 20px;
     }
 

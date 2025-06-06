@@ -6,7 +6,7 @@
 
   export let date;
   export let isExpanded = true;
-  export let places: { name: string; desc?: string; img?: string; time?: string; }[] = [];
+  export let places: { name: string; desc?: string; image?: string; time?: string; }[] = [];
 
   function toggleDate() {
     isExpanded = !isExpanded;
@@ -16,7 +16,7 @@
     const newPlace = {
       name: place.name || 'Unknown Place',
       desc: place.formatted_address || '',
-      img: place.photos ? place.photos[0].getUrl() : 'placeholder.jpeg',
+      image: (place as any).photoUrl || '/placeholder.jpeg',
       time: 'Add Time'
     };
     

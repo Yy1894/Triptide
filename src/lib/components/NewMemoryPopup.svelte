@@ -6,7 +6,12 @@
     import { goto } from '$app/navigation';
 
     export let showPopup = false;
+<<<<<<< HEAD
     export let onAddMemory = () => {};
+=======
+    export let locations: any[] = [];
+    export let onAddMemory = (p0?: { location: string; images: any[]; startDate: string; endDate: string; }) => {};
+>>>>>>> 9def1973a7b39a01052b5d81f6a5327e2524e7e1
     export let onCancel = () => {};
 
     let startDate = "";
@@ -15,8 +20,13 @@
     let dragActive = false;
     let selectedLocation = '';
     let customLocation = '';
+<<<<<<< HEAD
     let customLocationInput: HTMLInputElement;
     let images = [];
+=======
+    let images: any[] = [];
+    let dragActive = false;
+>>>>>>> 9def1973a7b39a01052b5d81f6a5327e2524e7e1
 
     let showLocationError = false;
     let showImageError = false;
@@ -60,7 +70,7 @@
         });
     }
 
-    function handleFiles(files) {
+    function handleFiles(files: any) {
         for (const file of files) {
             if (file.type.startsWith('image/')) {
                 images = [...images, file];
@@ -68,23 +78,23 @@
         }
     }
 
-    function handleDrop(event) {
+    function handleDrop(event: any) {
         event.preventDefault();
         dragActive = false;
         handleFiles(event.dataTransfer.files);
     }
 
-    function handleDragOver(event) {
+    function handleDragOver(event: any) {
         event.preventDefault();
         dragActive = true;
     }
 
-    function handleDragLeave(event) {
+    function handleDragLeave(event: any) {
         event.preventDefault();
         dragActive = false;
     }
 
-    function handleInputChange(event) {
+    function handleInputChange(event: any) {
         if (event.target.files) {
             handleFiles(event.target.files);
         }
@@ -200,8 +210,11 @@
             {/if}
 
             <div class="input-form">
+                <!-- svelte-ignore a11y_label_has_associated_control -->
                 <label>Upload images</label>
                 <div class="drop-area {dragActive ? 'active' : ''}"
+                    role="button"
+                    tabindex="0"
                     on:drop={handleDrop}
                     on:dragover={handleDragOver}
                     on:dragleave={handleDragLeave}
@@ -214,7 +227,8 @@
                         style="display: none;"
                         id="fileInput"
                     />
-                    <div class="drop-label" on:click={() => document.getElementById('fileInput')?.click()}>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <div class="drop-label" role="button" tabindex="0" on:click={() => document.getElementById('fileInput')?.click()}>
                         {#if images.length === 0}
                             <span>Drop image here</span>
                         {:else}

@@ -56,7 +56,7 @@
       </div>
   </div>
 
-  <NewMemoryPopup bind:showPopup={showNewMemoryPopup} fromPage="memories" />
+  <NewMemoryPopup bind:showPopup={showNewMemoryPopup} />
 </main>
 
 <style>
