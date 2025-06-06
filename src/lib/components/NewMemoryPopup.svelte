@@ -5,11 +5,18 @@
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
     import { collection, addDoc, getFirestore, Timestamp } from 'firebase/firestore';
-    import { app } from '$lib/firebase';
+    import { ref, push } from 'firebase/database';
+    import { db } from '../../firebase';
   
     export let showPopup = false;
+    $: console.log('Popup received prop:', showPopup);
     export let onAddMemory = () => {};
     export let onCancel = () => {};
+
+    function handleCancelClick() {
+        onCancel();
+        reset();
+    }
   
     let startDate = '';
     let endDate = '';
@@ -98,25 +105,30 @@
     }
   
     async function handleAddMemory() {
-      showLocationError = selectedLocation === '' || (isCustomLocation() && customLocation.trim() === '');
-      showImageError = images.length === 0;
-  
-      if (showLocationError || showImageError) return;
-  
-      const finalLocation = isCustomLocation() ? customLocation : selectedLocation;
-  
-      const db = getFirestore(app);
-      const docRef = await addDoc(collection(db, 'memories'), {
-        location: finalLocation,
-        startDate,
-        endDate,
-        images: images.map(file => URL.createObjectURL(file)), // 임시 처리. 실제 서비스에서는 Storage URL 써야 함
-        createdAt: Timestamp.now()
-      });
-  
-      reset();
-      goto(`/viewimage?id=${docRef.id}`);
-    }
+        showLocationError = selectedLocation === '' || (isCustomLocation() && customLocation.trim() === '');
+        showImageError = images.length === 0;
+
+        if (showLocationError || showImageError) return;
+
+        const finalLocation = isCustomLocation() ? customLocation : selectedLocation;
+
+        const newMemory = {
+            location: finalLocation,
+            startDate,
+            endDate,
+            images: images.map(file => URL.createObjectURL(file)),
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            const newMemoryRef = ref(db, 'memories');
+            const addedRef = await push(newMemoryRef, newMemory);
+            reset();
+            goto(`/viewimage?id=${addedRef.key}`);
+        } catch (error) {
+            console.error('Error saving memory:', error);
+        }
+        }
   
     function reset() {
       showPopup = false;

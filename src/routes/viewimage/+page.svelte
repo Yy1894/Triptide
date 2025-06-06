@@ -1,89 +1,115 @@
 <script>
   import '../../app.css';
-  import Button from '$lib/components/Button.svelte';
   import Nav from '$lib/components/Nav.svelte';
-  import { currentMemory } from '$lib/stores/memory';
-  import { get } from 'svelte/store';
+  import Button from '$lib/components/Button.svelte';
+  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { getDatabase, ref, get } from 'firebase/database';
+  import { db } from '../../firebase';
 
-  let memory = get(currentMemory);
+  let memoryId = '';
+  let memory = null;
 
-  // 메인 이미지
-  let mainImageUrl = memory?.images?.[0]
-    ? typeof memory.images[0] === 'string'
-      ? memory.images[0]
-      : URL.createObjectURL(memory.images[0])
-    : '';
+  $: {
+    const q = $page.url.searchParams;
+    memoryId = q.get('id') ?? '';
+  }
 
-  // 컬럼별 대표 색 (예시용)
+  onMount(async () => {
+    if (memoryId) {
+      const snapshot = await get(ref(db, `memories/${memoryId}`));
+      if (snapshot.exists()) {
+        memory = snapshot.val();
+      } else {
+        console.error('No memory found');
+      }
+    }
+  });
+
   let gradientColors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
-  $: gradientStyle = `conic-gradient(${[...gradientColors, gradientColors[0]].join(', ')})`;
+  $: gradientStyle = `
+    conic-gradient(
+      ${gradientColors.map((c, i) => `${c} ${i * 72}deg ${(i + 1) * 72}deg`).join(',')}
+    )
+  `;
 </script>
 
 <main>
-  <Nav activeTab="Memory" />
+  <Nav activeTab="MyMemory" darkMode={true}/>
 
   <div class="content">
-    <div class="header">
-      <h1>Memory View</h1>
-    </div>
-
     {#if memory}
-      <div class="memory-container">
-        <h2>{memory.location}</h2>
+      <div class="header">
+        <h1>{memory.location}</h1>
         <p>{memory.startDate} - {memory.endDate}</p>
+      </div>
 
-        <div class="visual-section">
-          <!-- 🎨 gradient wheel -->
-          <div
-            class="gradient-wheel"
-            style="background-image: {gradientStyle}; width: 300px; height: 300px"
-          ></div>
+      <div class="wheel-container">
+        <div class="gradient-wheel" style="background-image: {gradientStyle};"></div>
+      </div>
 
-          <!-- 📸 main image -->
-          <img
-            class="main-image"
-            src={mainImageUrl}
-            alt="Main Memory Image"
-          />
-        </div>
+      <div class="image-list">
+        {#each memory.images as img}
+          <img src={typeof img === 'string' ? img : URL.createObjectURL(img)} alt="Memory image" />
+        {/each}
       </div>
     {:else}
-      <p>Memory not loaded.</p>
+      <p class="empty">Loading memory...</p>
     {/if}
   </div>
 </main>
 
 <style>
-.content {
-  padding: 2rem;
-}
+  main {
+    height: 100vh;
+    background-color: var(--black);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
 
-.header {
-  margin-bottom: 2rem;
-}
+  .content {
+    flex: 1;
+    padding: 2rem 1rem;
+    overflow-y: auto;
+  }
 
-.memory-container {
-  text-align: center;
-}
+  .header {
+    text-align: center;
+    color: var(--white);
+    margin-bottom: 2rem;
+  }
 
-.visual-section {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
-}
+  .gradient-wheel {
+    width: 300px;
+    height: 300px;
+    margin: 2rem auto;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  }
 
-.gradient-wheel {
-  border-radius: 50%;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-}
+  .wheel-container {
+    display: flex;
+    justify-content: center;
+  }
 
-.main-image {
-  width: 300px;
-  height: auto;
-  border-radius: 12px;
-  object-fit: cover;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
-}
+  .image-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  .image-list img {
+    width: 80%;
+    max-width: 500px;
+    border-radius: 12px;
+  }
+
+  .empty {
+    color: var(--gray-400);
+    text-align: center;
+    margin-top: 4rem;
+  }
 </style>

@@ -1,5 +1,5 @@
 <script>
- import '/src/app.css';
+  import '../../app.css'
   import { goto } from '$app/navigation';
   import WorldMap from '$lib/components/WorldMap.svelte';
   import Button from '$lib/components/Button.svelte';
