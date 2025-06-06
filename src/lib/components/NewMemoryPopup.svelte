@@ -1,159 +1,137 @@
 <script lang="ts">
     import '../../app.css';
-    import Button from './Button.svelte';
+    import Button from '$lib/components/Button.svelte';
+    import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
-    import { goto } from '$app/navigation';
-
+    import { collection, addDoc, getFirestore, Timestamp } from 'firebase/firestore';
+    import { app } from '$lib/firebase';
+  
     export let showPopup = false;
-<<<<<<< HEAD
     export let onAddMemory = () => {};
-=======
-    export let locations: any[] = [];
-    export let onAddMemory = (p0?: { location: string; images: any[]; startDate: string; endDate: string; }) => {};
->>>>>>> 9def1973a7b39a01052b5d81f6a5327e2524e7e1
     export let onCancel = () => {};
-
-    let startDate = "";
-    let endDate = "";
+  
+    let startDate = '';
+    let endDate = '';
     let isGoogleLoaded = false;
     let dragActive = false;
     let selectedLocation = '';
     let customLocation = '';
-<<<<<<< HEAD
     let customLocationInput: HTMLInputElement;
-    let images = [];
-=======
-    let images: any[] = [];
-    let dragActive = false;
->>>>>>> 9def1973a7b39a01052b5d81f6a5327e2524e7e1
-
+    let images: File[] = [];
+  
     let showLocationError = false;
     let showImageError = false;
-
+  
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
-
+  
     onMount(async () => {
-        if (!GOOGLE_PLACES_API_KEY) {
-            console.error('Google Maps API key is missing');
-            return;
-        }
-
-        const loader = new Loader({
-            apiKey: GOOGLE_PLACES_API_KEY,
-            version: "weekly",
-            libraries: ["places"],
-            language: 'en'
-        });
-
-        try {
-            await loader.importLibrary("places");
-            isGoogleLoaded = true;
-        } catch (error) {
-            console.error('Error loading Places Autocomplete:', error);
-        }
+      if (!GOOGLE_PLACES_API_KEY) return;
+  
+      const loader = new Loader({
+        apiKey: GOOGLE_PLACES_API_KEY,
+        version: 'weekly',
+        libraries: ['places'],
+        language: 'en'
+      });
+  
+      try {
+        await loader.importLibrary('places');
+        isGoogleLoaded = true;
+      } catch (error) {
+        console.error('Error loading Places Autocomplete:', error);
+      }
     });
-
+  
     $: if (isGoogleLoaded && isCustomLocation() && customLocationInput) {
-        const autocompleteCustom = new google.maps.places.Autocomplete(customLocationInput, {
-            types: ['(regions)']
-        });
-
-        autocompleteCustom.setFields(['name', 'formatted_address']);
-
-        autocompleteCustom.addListener('place_changed', () => {
-            const place = autocompleteCustom.getPlace();
-            if (place.name) {
-                customLocation = place.name;
-                showLocationError = false;
-            }
-        });
-    }
-
-    function handleFiles(files: any) {
-        for (const file of files) {
-            if (file.type.startsWith('image/')) {
-                images = [...images, file];
-            }
+      const autocompleteCustom = new google.maps.places.Autocomplete(customLocationInput, {
+        types: ['(regions)']
+      });
+  
+      autocompleteCustom.setFields(['name']);
+      autocompleteCustom.addListener('place_changed', () => {
+        const place = autocompleteCustom.getPlace();
+        if (place.name) {
+          customLocation = place.name;
+          showLocationError = false;
         }
+      });
     }
-
-    function handleDrop(event: any) {
-        event.preventDefault();
-        dragActive = false;
-        handleFiles(event.dataTransfer.files);
-    }
-
-    function handleDragOver(event: any) {
-        event.preventDefault();
-        dragActive = true;
-    }
-
-    function handleDragLeave(event: any) {
-        event.preventDefault();
-        dragActive = false;
-    }
-
-    function handleInputChange(event: any) {
-        if (event.target.files) {
-            handleFiles(event.target.files);
+  
+    function handleFiles(files: FileList) {
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          images = [...images, file];
         }
+      }
     }
-
-    function handleCancelClick() {
-        onCancel();
-        reset();
+  
+    function handleDrop(event: DragEvent) {
+      event.preventDefault();
+      dragActive = false;
+      handleFiles(event.dataTransfer!.files);
     }
-
-    function reset() {
-        showPopup = false;
-        selectedLocation = '';
-        customLocation = '';
-        images = [];
-        startDate = '';
-        endDate = '';
-        showLocationError = false;
-        showImageError = false;
+  
+    function handleDragOver(event: DragEvent) {
+      event.preventDefault();
+      dragActive = true;
     }
-
+  
+    function handleDragLeave(event: DragEvent) {
+      event.preventDefault();
+      dragActive = false;
+    }
+  
+    function handleInputChange(event: Event) {
+      const target = event.target as HTMLInputElement;
+      if (target.files) {
+        handleFiles(target.files);
+      }
+    }
+  
     function isCustomLocation() {
-        return selectedLocation === 'custom';
+      return selectedLocation === 'custom';
     }
-
+  
     function removeImage(imageToRemove: File) {
-        images = images.filter(img => img !== imageToRemove);
+      images = images.filter(img => img !== imageToRemove);
     }
-
-    function handleAddMemory() {
-        showLocationError = selectedLocation === '' || (selectedLocation === 'custom' && customLocation.trim() === '');
-        showImageError = images.length === 0;
-
-        if (showLocationError || showImageError) return;
-
-        const finalLocation = selectedLocation === 'custom' ? customLocation : selectedLocation;
-
-        const memory = {
-            location: finalLocation,
-            images,
-            startDate,
-            endDate
-        };
-
-        // link data later...
-        const params = new URLSearchParams({
-            location: finalLocation,
-            startDate,
-            endDate
-        });
-
-        goto(`/viewimage?${params.toString()}`);
-
-        reset();
-        }
-
-    // needs to link with plan data set
+  
+    async function handleAddMemory() {
+      showLocationError = selectedLocation === '' || (isCustomLocation() && customLocation.trim() === '');
+      showImageError = images.length === 0;
+  
+      if (showLocationError || showImageError) return;
+  
+      const finalLocation = isCustomLocation() ? customLocation : selectedLocation;
+  
+      const db = getFirestore(app);
+      const docRef = await addDoc(collection(db, 'memories'), {
+        location: finalLocation,
+        startDate,
+        endDate,
+        images: images.map(file => URL.createObjectURL(file)), // 임시 처리. 실제 서비스에서는 Storage URL 써야 함
+        createdAt: Timestamp.now()
+      });
+  
+      reset();
+      goto(`/viewimage?id=${docRef.id}`);
+    }
+  
+    function reset() {
+      showPopup = false;
+      selectedLocation = '';
+      customLocation = '';
+      images = [];
+      startDate = '';
+      endDate = '';
+      showLocationError = false;
+      showImageError = false;
+    }
+  
     const locations = ['Paris', 'Tokyo', 'New York'];
-</script>
+  </script>
+  
 
 {#if showPopup}
     <div class="overlay">

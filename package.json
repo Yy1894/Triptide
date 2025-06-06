@@ -28,7 +28,7 @@
 	"dependencies": {
 		"@googlemaps/js-api-loader": "^1.16.8",
 		"d3": "^7.9.0",
-		"firebase": "^11.8.1",
+		"firebase": "^11.9.0",
 		"topojson-client": "^3.1.0",
 		"topojson-server": "^3.0.1"
 	}
