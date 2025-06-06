@@ -18,14 +18,17 @@
     import AddPlaces from '$lib/components/AddPlaces.svelte';
     import PlaceCard from '$lib/components/PlaceCard.svelte';
     import PastTripsPanel from '$lib/components/PastTripsPanel.svelte';
-    import { getPlaceRecommendations } from '$lib/services/openai';
+    import { getPlaceRecommendations, distributePlacesToItinerary } from '../../../services/openai';
     import RecommendationPopup from '$lib/components/RecommendationPopup.svelte';
     import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
+    import TurnIntoItineraryPopup from '$lib/components/TurnIntoItineraryPopup.svelte';
 
     let tripData: any = null;
     let tripDates: string[] = [];
     let tid: string;
     let countryCode = 'tw'; // country code to restrict the autocomplete search
+    let showTurnIntoItineraryPopup = false;
+    let isDistributingPlaces = false;
     
     // the place data structure saved in the database
     interface Place {
@@ -460,8 +463,48 @@
         }
     }
 
-    function handleTurnIntoItinerary() {
-        console.log(`please turn this into itinerary`);
+    async function handleTurnIntoItinerary() {
+        showTurnIntoItineraryPopup = true;
+    }
+
+    async function handleConfirmTurnIntoItinerary() {
+        showTurnIntoItineraryPopup = false;
+        isDistributingPlaces = true;
+
+        try {
+            // Convert dates to DD-MM-YYYY format
+            const formattedDates = tripDates.map(date => convertDateFormat(date));
+            
+            // Distribute places using OpenAI, passing the existing places
+            const distribution = await distributePlacesToItinerary(
+                placesToVisit,
+                formattedDates,
+                tripData.destination.name,
+                placesPlanned
+            );
+
+            // Update the database with the new distribution
+            await update(ref(db, `trips/${tid}/itineraryDate`), distribution);
+            
+            // Update local state
+            placesPlanned = distribution;
+
+            // Clear places to visit
+            await update(ref(db, `trips/${tid}`), {
+                placesToVisit: []
+            });
+            placesToVisit = [];
+
+        } catch (error) {
+            console.error('Error turning into itinerary:', error);
+            alert('Failed to distribute places. Please try again.');
+        } finally {
+            isDistributingPlaces = false;
+        }
+    }
+
+    function handleCancelTurnIntoItinerary() {
+        showTurnIntoItineraryPopup = false;
     }
 
     async function handlePlacePlanned(date: string, places: Place[]) {
@@ -588,9 +631,15 @@
         onCancel={handleRecommendationCancel}
     />
 
+    <TurnIntoItineraryPopup
+        showPopup={showTurnIntoItineraryPopup}
+        onConfirm={handleConfirmTurnIntoItinerary}
+        onCancel={handleCancelTurnIntoItinerary}
+    />
+
     <LoadingOverlay 
-        show={isGeneratingRecommendations}
-        message="Generating Recommended Places"
+        show={isGeneratingRecommendations || isDistributingPlaces}
+        message={isDistributingPlaces ? "Distributing Places into Itinerary" : "Generating Recommended Places"}
     />
 </main>
 
