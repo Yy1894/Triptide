@@ -3,21 +3,14 @@
     import Button from './Button.svelte';
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
+    import { goto } from '$app/navigation';
 
     export let showPopup = false;
     export let onAddMemory = () => {};
     export let onCancel = () => {};
 
-    let destination = "";
-    let lastSelectedPlaceName = "";
     let startDate = "";
     let endDate = "";
-    let destinationError = false;
-    let startDateError = false;
-    let endDateError = false;
-    let dateOrderError = false;
-    let destinationInput: HTMLDivElement;
-    let autocomplete: google.maps.places.Autocomplete | null = null;
     let isGoogleLoaded = false;
     let dragActive = false;
     let selectedLocation = '';
@@ -128,9 +121,25 @@
         if (showLocationError || showImageError) return;
 
         const finalLocation = selectedLocation === 'custom' ? customLocation : selectedLocation;
-        onAddMemory({ location: finalLocation, images, startDate, endDate });
+
+        const memory = {
+            location: finalLocation,
+            images,
+            startDate,
+            endDate
+        };
+
+        // link data later...
+        const params = new URLSearchParams({
+            location: finalLocation,
+            startDate,
+            endDate
+        });
+
+        goto(`/viewimage?${params.toString()}`);
+
         reset();
-    }
+        }
 
     // needs to link with plan data set
     const locations = ['Paris', 'Tokyo', 'New York'];
