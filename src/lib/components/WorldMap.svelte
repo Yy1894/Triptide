@@ -4,38 +4,91 @@
   import { feature } from 'topojson-client';
   import { Colors } from '../constants/Colors';
   import '../../app.css';
+  import { ref, get } from 'firebase/database';
+  import { db } from '../../firebase';
 
   let mapContainer: HTMLDivElement;
 
+  interface TripLocation {
+    name: string;
+    location: {
+      lat: number;
+      lng: number;
+    };
+  }
+
+  async function getPastTripLocations(): Promise<TripLocation[]> {
+    try {
+      const tripsRef = ref(db, 'trips');
+      const snapshot = await get(tripsRef);
+      
+      if (!snapshot.exists()) return [];
+
+      // Get today's date at midnight for comparison
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Create a Set to store unique locations
+      const uniqueLocations = new Map<string, TripLocation>();
+
+      // Filter past trips and extract unique destinations
+      Object.values(snapshot.val()).forEach((trip: any) => {
+        const endDate = new Date(trip.endDate);
+        if (endDate < today && trip.destination?.location) {
+          const locationKey = `${trip.destination.location.lat},${trip.destination.location.lng}`;
+          if (!uniqueLocations.has(locationKey)) {
+            uniqueLocations.set(locationKey, {
+              name: trip.destination.name,
+              location: trip.destination.location
+            });
+          }
+        }
+      });
+
+      return Array.from(uniqueLocations.values());
+    } catch (error) {
+      console.error('Error fetching past trips:', error);
+      return [];
+    }
+  }
+
+  let cleanup: (() => void) | undefined;
+
   onMount(() => {
-    const width = mapContainer.clientWidth;
-    const height = mapContainer.clientHeight;
+    let mounted = true;
 
-    // Create SVG
-    const svg = d3.select(mapContainer)
-      .append('svg')
-      .attr('width', '100%')
-      .attr('height', '100%')
-      .attr('viewBox', `0 0 ${width} ${height}`)  // make a coordinate from (0, 0) to (width, height)
-      .attr('preserveAspectRatio', 'xMidYMid meet') as d3.Selection<SVGSVGElement, unknown, null, undefined>; // center the map
+    async function initMap() {
+      if (!mounted) return;
 
-    // Add a group for all map elements that will be transformed
-    const g = svg.append('g');
+      const width = mapContainer.clientWidth;
+      const height = mapContainer.clientHeight;
 
-    // Create projection
-    const projection = d3.geoMercator()
-      .scale(width / (2 * Math.PI))
-      .translate([width / 2, height / 1.6]);  // position the map, horizontally centered but is slighty upward
+      // Create SVG
+      const svg = d3.select(mapContainer)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet') as d3.Selection<SVGSVGElement, unknown, null, undefined>;
 
-    const path = d3.geoPath().projection(projection);
+      // Add a group for all map elements that will be transformed
+      const g = svg.append('g');
 
-    // Tokyo coordinates [longitude, latitude]
-    const tokyo: [number, number] = [139.6917, 35.6895];
+      // Create projection
+      const projection = d3.geoMercator()
+        .scale(width / (2 * Math.PI))
+        .translate([width / 2, height / 1.6]);  // position the map, horizontally centered but is slighty upward
 
-    const initMap = async () => {
+      const path = d3.geoPath().projection(projection);
+
       try {
+        // Get past trip locations
+        const pastLocations = await getPastTripLocations();
+        if (!mounted) return;
+
         // Load world map data
         const response = await fetch('https://unpkg.com/world-atlas@2/countries-110m.json');
+        if (!mounted) return;
         const world = await response.json();
         
         // Convert TopoJSON to GeoJSON
@@ -53,13 +106,16 @@
           .attr('stroke', Colors.gray.light50)
           .attr('stroke-width', '0.5');
 
-        // Add Tokyo marker
-        g.append('circle')
-          .attr('cx', projection(tokyo)![0])
-          .attr('cy', projection(tokyo)![1])
+        // Add markers for past trip locations
+        g.selectAll('circle')
+          .data(pastLocations)
+          .enter()
+          .append('circle')
+          .attr('cx', d => projection([d.location.lng, d.location.lat])![0])
+          .attr('cy', d => projection([d.location.lng, d.location.lat])![1])
           .attr('r', 5)
           .attr('class', 'marker')
-          .attr('fill', Colors.planner.med400);
+          .attr('fill', Colors.planner.med400)
 
         // Add zoom behavior
         const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -70,16 +126,20 @@
 
         svg.call(zoom)
            .call(zoom.transform, d3.zoomIdentity);
+
       } catch (error) {
-        console.error('Error loading map:', error);
+        console.error('Error initializing map:', error);
       }
-    };
+    }
 
     initMap();
 
-    return () => {
+    cleanup = () => {
+      mounted = false;
       d3.select(mapContainer).selectAll('*').remove();
     };
+
+    return cleanup;
   });
 </script>
 

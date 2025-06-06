@@ -259,7 +259,7 @@
                     tripDates = dates;
                     
                     // initialize expanded states for dates
-                    expandedDates = Object.fromEntries(dates.map(date => [date, false]));
+                    expandedDates = Object.fromEntries(dates.map(date => [date, true]));
 
                     // initialize placesToVisit from database or empty array
                     placesToVisit = tripData.placesToVisit || [];

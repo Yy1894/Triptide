@@ -83,9 +83,9 @@
             {#if fullPlace.desc}
                 <p class="place-desc">{fullPlace.desc}</p>
             {/if}
-            <div class="plan-time">
+            <!-- <div class="plan-time">
                 <button class="edit-time">{fullPlace.time}</button>
-            </div>
+            </div> -->
         </div>
     </div>
 {/if}
@@ -236,7 +236,7 @@
         font-size: 0.9rem;
     }
 
-    .edit-time {
+    /* .edit-time {
         background-color: var(--gray-200);
         border: none;
         padding: 0.5rem 1rem;
@@ -249,5 +249,5 @@
 
     .edit-time:hover {
         opacity: 0.75;
-    }
+    } */
 </style>
