@@ -26,9 +26,17 @@
     let customLocation = '';
     let customLocationInput: HTMLInputElement;
     let images: File[] = [];
-  
     let showLocationError = false;
     let showImageError = false;
+    let hasAttemptedSubmit = false;
+    let isFormValid = true;
+
+    $: if (hasAttemptedSubmit) {
+        isFormValid = (
+            (selectedLocation !== '' && (!isCustomLocation() || customLocation.trim() !== '')) &&
+            images.length > 0
+        );
+    }
   
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
   
@@ -105,6 +113,8 @@
     }
   
     async function handleAddMemory() {
+        hasAttemptedSubmit = true;
+
         showLocationError = selectedLocation === '' || (isCustomLocation() && customLocation.trim() === '');
         showImageError = images.length === 0;
 
@@ -243,7 +253,7 @@
                 <Button text="Cancel" type="gray" onClick={handleCancelClick} />
                 <Button text="Add a new memory" type="orange" 
                     onClick={handleAddMemory} 
-                    disabled={showLocationError || showImageError}/>
+                    disabled={hasAttemptedSubmit && !isFormValid}/>
             </div>
         </div>
     </div>
