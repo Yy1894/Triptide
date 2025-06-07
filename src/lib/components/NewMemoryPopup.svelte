@@ -4,25 +4,18 @@
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
-    import { collection, addDoc, getFirestore, Timestamp } from 'firebase/firestore';
-    import { ref, push } from 'firebase/database';
+    import { ref, push, onValue } from 'firebase/database';
     import { db } from '../../firebase';
   
     export let showPopup = false;
-    $: console.log('Popup received prop:', showPopup);
     export let onAddMemory = () => {};
     export let onCancel = () => {};
+    export let tid: string;
 
-    function handleCancelClick() {
-        onCancel();
-        reset();
-    }
-  
     let startDate = '';
     let endDate = '';
     let isGoogleLoaded = false;
     let dragActive = false;
-    let selectedLocation = '';
     let customLocation = '';
     let customLocationInput: HTMLInputElement;
     let images: File[] = [];
@@ -30,12 +23,55 @@
     let showImageError = false;
     let hasAttemptedSubmit = false;
     let isFormValid = true;
+    let selectedTripId = ''; //for dropdown
+    let selectedLocation = '';
+
+    let tripOptions: { value: string; label: string }[] = [];
+
+    ////////// THIS PART - load destination, startDate, and endDate from previous trip ////////
+    onMount(() => {
+        const tripsRef = ref(db, 'trips');
+        onValue(tripsRef, snapshot => {
+            const options: { value: string; label: string }[] = [];
+            snapshot.forEach(child => {
+            const val = child.val();
+            const tripId = child.key;
+            const { name } = val.destination;
+            const start = new Date(val.startDate);
+            const end = new Date(val.endDate);
+            const format = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+            options.push({
+                value: tripId,
+                label: `${name} (${format(start)} - ${format(end)})`
+            });
+            });
+            tripOptions = options;
+        });
+    });
+  
 
     $: if (hasAttemptedSubmit) {
         isFormValid = (
             (selectedLocation !== '' && (!isCustomLocation() || customLocation.trim() !== '')) &&
             images.length > 0
         );
+    }
+
+    $: if (selectedTripId && selectedTripId !== 'custom') {
+        const trip = tripOptions.find(t => t.value === selectedTripId);
+        if (trip) {
+            selectedLocation = trip.label.split(' (')[0]; // label에서 name 추출
+            const tripRef = ref(db, `trips/${selectedTripId}`);
+            onValue(tripRef, (snapshot) => {
+                const val = snapshot.val();
+                startDate = val.startDate;
+                endDate = val.endDate;
+            });
+        }
+    }
+
+    function isCustomLocation() {
+        return selectedTripId === 'custom';
     }
   
     const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
@@ -80,6 +116,11 @@
         }
       }
     }
+
+    function handleCancelClick() {
+        onCancel();
+        reset();
+    }
   
     function handleDrop(event: DragEvent) {
       event.preventDefault();
@@ -104,10 +145,6 @@
       }
     }
   
-    function isCustomLocation() {
-      return selectedLocation === 'custom';
-    }
-  
     function removeImage(imageToRemove: File) {
       images = images.filter(img => img !== imageToRemove);
     }
@@ -129,32 +166,39 @@
             images: images.map(file => URL.createObjectURL(file)),
             createdAt: new Date().toISOString()
         };
-
+        ////////// THIS PART - add memory node on trips /////////
         try {
-            const newMemoryRef = ref(db, 'memories');
-            const addedRef = await push(newMemoryRef, newMemory);
+            const memoryRef = ref(db, `trips/${tid}/memories`);
+            const newMemory = {
+                location: finalLocation,
+                startDate,
+                endDate,
+                images: images.map(file => URL.createObjectURL(file)),
+                createdAt: new Date().toISOString()
+            };
+            const addedRef = await push(memoryRef, newMemory);
+
             reset();
             goto(`/viewimage?id=${addedRef.key}`);
         } catch (error) {
             console.error('Error saving memory:', error);
         }
-        }
+    }
   
     function reset() {
-      showPopup = false;
-      selectedLocation = '';
-      customLocation = '';
-      images = [];
-      startDate = '';
-      endDate = '';
-      showLocationError = false;
-      showImageError = false;
+        showPopup = false;
+        selectedLocation = '';
+        customLocation = '';
+        images = [];
+        startDate = '';
+        endDate = '';
+        showLocationError = false;
+        showImageError = false;
     }
   
     const locations = ['Paris', 'Tokyo', 'New York'];
   </script>
   
-
 {#if showPopup}
     <div class="overlay">
         <div class="popup {showLocationError || showImageError ? 'error' : ''}">
@@ -162,13 +206,14 @@
 
             <div class="input-form">
                 <label for="location">Load from past trips</label>
-                <select id="location" bind:value={selectedLocation}>
+                <!-- THIS PART - binding informaions to dropdown options-->
+                <select bind:value={selectedTripId}>
                     <option value="" disabled>Select location</option>
-                    {#each locations as loc}
-                        <option value={loc}>{loc}</option>
+                    {#each tripOptions as opt}
+                        <option value={opt.value}>{opt.label}</option>
                     {/each}
                     <option value="custom" class="custom-option">+ Enter custom trip</option>
-                </select>
+                  </select>
             </div>
 
             {#if isCustomLocation()}
