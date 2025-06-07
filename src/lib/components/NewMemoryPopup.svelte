@@ -8,9 +8,8 @@
     import { db } from '../../firebase';
   
     export let showPopup = false;
-    export let onAddMemory = () => {};
+    // export let onAddMemory = () => {};
     export let onCancel = () => {};
-    export let tid: string;
 
     let startDate = '';
     let endDate = '';
@@ -28,22 +27,24 @@
 
     let tripOptions: { value: string; label: string }[] = [];
 
-    ////////// THIS PART - load destination, startDate, and endDate from previous trip ////////
     onMount(() => {
+        // reference to the trips node
         const tripsRef = ref(db, 'trips');
-        onValue(tripsRef, snapshot => {
+
+        // listen for changes in the trips data
+        onValue(tripsRef, (snapshot) => {
             const options: { value: string; label: string }[] = [];
             snapshot.forEach(child => {
-            const val = child.val();
-            const tripId = child.key;
-            const { name } = val.destination;
-            const start = new Date(val.startDate);
-            const end = new Date(val.endDate);
-            const format = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-            options.push({
-                value: tripId,
-                label: `${name} (${format(start)} - ${format(end)})`
-            });
+                const val = child.val();
+                const tripId = child.key;
+                const { name } = val.destination;
+                const start = new Date(val.startDate);
+                const end = new Date(val.endDate);
+                const format = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${String(d.getFullYear())}`;
+                options.push({
+                    value: tripId,
+                    label: `${name} (${format(start)} - ${format(end)})`
+                });
             });
             tripOptions = options;
         });
@@ -64,8 +65,9 @@
             const tripRef = ref(db, `trips/${selectedTripId}`);
             onValue(tripRef, (snapshot) => {
                 const val = snapshot.val();
-                startDate = val.startDate;
-                endDate = val.endDate;
+                startDate = new Date(val.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                endDate = new Date(val.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                console.log(`startDate: ${startDate}, endDate: ${endDate}`);
             });
         }
     }
@@ -159,6 +161,7 @@
 
         const finalLocation = isCustomLocation() ? customLocation : selectedLocation;
 
+        console.log(`startDate = ${startDate}, endDate = ${endDate}, location = ${location}`)
         const newMemory = {
             location: finalLocation,
             startDate,
@@ -166,20 +169,21 @@
             images: images.map(file => URL.createObjectURL(file)),
             createdAt: new Date().toISOString()
         };
-        ////////// THIS PART - add memory node on trips /////////
         try {
-            const memoryRef = ref(db, `trips/${tid}/memories`);
+            console.log(`tid = ${selectedTripId}`);
+            const memoryRef = ref(db, `trips/${selectedTripId}/memories`);
             const newMemory = {
                 location: finalLocation,
-                startDate,
-                endDate,
+                startDate: startDate,
+                endDate: endDate,
+                // TODO: change this to use non-local URL
                 images: images.map(file => URL.createObjectURL(file)),
                 createdAt: new Date().toISOString()
             };
             const addedRef = await push(memoryRef, newMemory);
 
             reset();
-            goto(`/viewimage?id=${addedRef.key}`);
+            goto(`/viewimage/${selectedTripId}/${addedRef.key}`);
         } catch (error) {
             console.error('Error saving memory:', error);
         }
@@ -206,7 +210,6 @@
 
             <div class="input-form">
                 <label for="location">Load from past trips</label>
-                <!-- THIS PART - binding informaions to dropdown options-->
                 <select bind:value={selectedTripId}>
                     <option value="" disabled>Select location</option>
                     {#each tripOptions as opt}

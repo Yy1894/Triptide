@@ -1,11 +1,11 @@
 <script>
-  import '../../app.css';
+  import '../../../../app.css';
   import Nav from '$lib/components/Nav.svelte';
   import Button from '$lib/components/Button.svelte';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { ref, get } from 'firebase/database';
-  import { db } from '../../firebase';
+  import { db } from '../../../../firebase';
 
   let memoryId = '';
   /**
@@ -14,6 +14,7 @@
   let memory = null;
   let tripId = '';
 
+  // Subscribe to page store to get URL parameters
   $: {
     tripId = page.params.tripId;
     memoryId = page.params.memoryId;
@@ -121,4 +122,4 @@
     text-align: center;
     margin-top: 4rem;
   }
-</style>
+</style> 

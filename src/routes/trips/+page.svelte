@@ -7,23 +7,7 @@
     import { onMount } from 'svelte';
     import { ref, onValue } from 'firebase/database';
     import { db } from '../../firebase';
-    
-    interface Trip {
-        tid: string;
-        destination: {
-            name: string;
-            photo: string;
-            formatted_address: string;
-            location: {
-                lat: number;
-                lng: number;
-            }
-        };
-        startDate: string;
-        endDate: string;
-        tripmates: string[];
-        created_at: string;
-    }
+    import type { Trip } from '$lib/constants/Interfaces';
 
     let activeTab = "Ongoing Trips";
     let showNewTripPopup = false;

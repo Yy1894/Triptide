@@ -22,6 +22,7 @@
     import RecommendationPopup from '$lib/components/RecommendationPopup.svelte';
     import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
     import TurnIntoItineraryPopup from '$lib/components/TurnIntoItineraryPopup.svelte';
+    import type { Place } from '$lib/constants/Interfaces';
 
     let tripData: any = null;
     let tripDates: string[] = [];
@@ -29,18 +30,6 @@
     let countryCode = 'tw'; // country code to restrict the autocomplete search
     let showTurnIntoItineraryPopup = false;
     let isDistributingPlaces = false;
-    
-    // the place data structure saved in the database
-    interface Place {
-        name: string;
-        desc?: string;
-        image?: string;
-        time?: string;
-        geometry?: {
-            lat: number;
-            lng: number;
-        };
-    }
 
     interface DatePlaces {
         placesPlanned: Place[];
