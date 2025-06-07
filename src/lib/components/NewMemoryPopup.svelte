@@ -255,8 +255,6 @@
                 
                 <uc-upload-ctx-provider
                     ctx-name="my-uploader"
-                    bind:this={uploaderCtxEl}
-                    bind:ctx={uploaderCtx}
                 ></uc-upload-ctx-provider>
 
                 {#if showImageError}
