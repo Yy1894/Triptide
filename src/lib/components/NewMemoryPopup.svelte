@@ -6,26 +6,32 @@
     import { Loader } from '@googlemaps/js-api-loader';
     import { ref, push, onValue } from 'firebase/database';
     import { db } from '../../firebase';
+    import * as UC from '@uploadcare/file-uploader';
+    import "@uploadcare/file-uploader/web/uc-file-uploader-regular.min.css"
+
+    UC.defineComponents(UC);
+
   
     export let showPopup = false;
-    // export let onAddMemory = () => {};
     export let onCancel = () => {};
 
     let startDate = '';
     let endDate = '';
     let isGoogleLoaded = false;
-    let dragActive = false;
     let customLocation = '';
     let customLocationInput: HTMLInputElement;
-    let images: File[] = [];
     let showLocationError = false;
     let showImageError = false;
     let hasAttemptedSubmit = false;
     let isFormValid = true;
     let selectedTripId = ''; //for dropdown
     let selectedLocation = '';
+    let uploaderCtxEl: HTMLElement;
+    let uploaderCtx: any;
 
     let tripOptions: { value: string; label: string }[] = [];
+    let uploadedImageURLs: string[] = [];
+
 
     onMount(() => {
         // reference to the trips node
@@ -49,19 +55,29 @@
             tripOptions = options;
         });
     });
-  
 
-    $: if (hasAttemptedSubmit) {
-        isFormValid = (
-            (selectedLocation !== '' && (!isCustomLocation() || customLocation.trim() !== '')) &&
-            images.length > 0
-        );
-    }
+    $: if (uploaderCtx) {
+        uploaderCtx.on('change', () => {
+            const urls = uploaderCtx.files().map(file => file?.cdnUrl).filter(Boolean);
+            uploadedImageURLs = urls;
+            console.log('uploadedImageURLs:', uploadedImageURLs);
+
+            if (uploadedImageURLs.length > 0) {
+                showImageError = false;
+                hasAttemptedSubmit = true;
+            }
+        });
+    } 
+
+    $: isFormValid = (
+        (selectedLocation !== '' && (!isCustomLocation() || customLocation.trim() !== '')) &&
+        uploadedImageURLs.length > 0
+    );
 
     $: if (selectedTripId && selectedTripId !== 'custom') {
         const trip = tripOptions.find(t => t.value === selectedTripId);
         if (trip) {
-            selectedLocation = trip.label.split(' (')[0]; // label에서 name 추출
+            selectedLocation = trip.label.split(' (')[0]; 
             const tripRef = ref(db, `trips/${selectedTripId}`);
             onValue(tripRef, (snapshot) => {
                 const val = snapshot.val();
@@ -110,52 +126,29 @@
         }
       });
     }
-  
-    function handleFiles(files: FileList) {
-      for (const file of files) {
-        if (file.type.startsWith('image/')) {
-          images = [...images, file];
-        }
-      }
-    }
 
+    function reset() {
+        showPopup = false;
+        selectedLocation = '';
+        customLocation = '';
+        startDate = '';
+        endDate = '';
+        showLocationError = false;
+        showImageError = false;
+        uploadedImageURLs = [];
+        hasAttemptedSubmit = false;
+    }
+  
     function handleCancelClick() {
         onCancel();
         reset();
-    }
-  
-    function handleDrop(event: DragEvent) {
-      event.preventDefault();
-      dragActive = false;
-      handleFiles(event.dataTransfer!.files);
-    }
-  
-    function handleDragOver(event: DragEvent) {
-      event.preventDefault();
-      dragActive = true;
-    }
-  
-    function handleDragLeave(event: DragEvent) {
-      event.preventDefault();
-      dragActive = false;
-    }
-  
-    function handleInputChange(event: Event) {
-      const target = event.target as HTMLInputElement;
-      if (target.files) {
-        handleFiles(target.files);
-      }
-    }
-  
-    function removeImage(imageToRemove: File) {
-      images = images.filter(img => img !== imageToRemove);
     }
   
     async function handleAddMemory() {
         hasAttemptedSubmit = true;
 
         showLocationError = selectedLocation === '' || (isCustomLocation() && customLocation.trim() === '');
-        showImageError = images.length === 0;
+        showImageError = uploadedImageURLs.length === 0;
 
         if (showLocationError || showImageError) return;
 
@@ -166,7 +159,7 @@
             location: finalLocation,
             startDate,
             endDate,
-            images: images.map(file => URL.createObjectURL(file)),
+            images: uploadedImageURLs,
             createdAt: new Date().toISOString()
         };
         try {
@@ -176,8 +169,7 @@
                 location: finalLocation,
                 startDate: startDate,
                 endDate: endDate,
-                // TODO: change this to use non-local URL
-                images: images.map(file => URL.createObjectURL(file)),
+                images: uploadedImageURLs,
                 createdAt: new Date().toISOString()
             };
             const addedRef = await push(memoryRef, newMemory);
@@ -188,20 +180,8 @@
             console.error('Error saving memory:', error);
         }
     }
-  
-    function reset() {
-        showPopup = false;
-        selectedLocation = '';
-        customLocation = '';
-        images = [];
-        startDate = '';
-        endDate = '';
-        showLocationError = false;
-        showImageError = false;
-    }
-  
-    const locations = ['Paris', 'Tokyo', 'New York'];
-  </script>
+
+</script>
   
 {#if showPopup}
     <div class="overlay">
@@ -257,41 +237,28 @@
                 <p class="error-message">Please enter a location.</p>
             {/if}
 
-            <div class="input-form">
-                <!-- svelte-ignore a11y_label_has_associated_control -->
+            <div class="input-form uploader-wrapper">
                 <label>Upload images</label>
-                <div class="drop-area {dragActive ? 'active' : ''}"
-                    role="button"
-                    tabindex="0"
-                    on:drop={handleDrop}
-                    on:dragover={handleDragOver}
-                    on:dragleave={handleDragLeave}
-                >
-                    <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        on:change={handleInputChange}
-                        style="display: none;"
-                        id="fileInput"
-                    />
-                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                    <div class="drop-label" role="button" tabindex="0" on:click={() => document.getElementById('fileInput')?.click()}>
-                        {#if images.length === 0}
-                            <span>Drop image here</span>
-                        {:else}
-                            <div class="preview-list">
-                                {#each images as img}
-                                    <div class="preview-item">
-                                        <button class="delete-button" on:click={() => removeImage(img)}>×</button>
-                                        <img src={URL.createObjectURL(img)} alt={img.name} />
-                                        <p>{img.name}</p>
-                                    </div>
-                                {/each}
-                            </div>
-                        {/if}
-                    </div>
-                </div>
+                <uc-config
+                    ctx-name="my-uploader"
+                    source-list="local, camera, gdrive"
+                    pubkey="d4067f33e4ac8363f078"
+                    multiple="true"
+                    multiple-min= 1
+
+                ></uc-config>
+                
+                <uc-file-uploader-minimal
+                    ctx-name="my-uploader"
+                    class="uc-dark uc-gray"
+                ></uc-file-uploader-minimal>
+                
+                <uc-upload-ctx-provider
+                    ctx-name="my-uploader"
+                    bind:this={uploaderCtxEl}
+                    bind:ctx={uploaderCtx}
+                ></uc-upload-ctx-provider>
+
                 {#if showImageError}
                     <p class="error-message">Please upload at least one image.</p>
                 {/if}
@@ -301,7 +268,7 @@
                 <Button text="Cancel" type="gray" onClick={handleCancelClick} />
                 <Button text="Add a new memory" type="orange" 
                     onClick={handleAddMemory} 
-                    disabled={hasAttemptedSubmit && !isFormValid}/>
+                    disabled={!isFormValid}/>
             </div>
         </div>
     </div>
@@ -402,78 +369,6 @@
     .date-group .input-form {
         flex: 1;
         margin-bottom: 0;
-    }
-
-    .preview-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        max-height: 200px;
-        overflow-y: auto;
-        padding-right: 0.5rem;
-    }
-
-    .preview-item {
-        position: relative;
-        width: 80px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .preview-item img {
-        width: 100%;
-        border-radius: 6px;
-        object-fit: cover;
-    }
-
-    .preview-item p {
-        font-size: 0.75rem;
-        text-align: center;
-        margin-top: 0.3rem;
-        color: var(--gray-400);
-    }
-
-    .delete-button {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        background: rgba(38, 38, 38, 0.5);
-        border: none;
-        color: var(--white);
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        font-size: 0.9rem;
-        cursor: pointer;
-        z-index: 2;
-    }
-
-
-    .drop-area {
-        width: 100%;
-        min-height: 120px;
-        background: var(--gray-900);
-        border: 1px solid var(--gray-200);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--white);
-        transition: border-color 0.2s;
-        cursor: pointer;
-    }
-
-    .drop-area.active {
-        border-color: var(--memory-500);
-        color: var(--memory-500);
-    }
-
-    .drop-label {
-        padding: 2rem 1rem;
-        text-align: center;
-        width: 100%;
-        cursor: pointer;
     }
 
     option.custom-option {
