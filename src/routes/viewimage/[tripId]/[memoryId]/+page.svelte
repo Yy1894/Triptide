@@ -11,10 +11,23 @@
   let tripOptions = [];
   let memory = null;
   let tripId = '';
+  let currentImageIndex = 0;
+  let gradientLayers = [];
+  let columnGroups = [];
+  let rotationAngle = 0;
 
+  $: tripId = page.params.tripId;
+  $: memoryId = page.params.memoryId;
+  $: currentImage = memory?.images?.[currentImageIndex];
   $: {
-    tripId = page.params.tripId;
-    memoryId = page.params.memoryId;
+    if (memory?.images?.length > 0) {
+      const imageCount = memory.images.length;
+      const sliceAngle = 360 / imageCount;
+      rotationAngle = 90 - sliceAngle / 2 + sliceAngle * currentImageIndex;
+      console.log('Rotation angle:', rotationAngle);
+    } else {
+      rotationAngle = 0;
+    }
   }
 
   onMount(async () => {
@@ -55,6 +68,10 @@
               tripOptions.unshift(current);
             }
           }
+
+          if (memory?.images?.length) {
+            columnGroups = await extractColumnwiseColors(memory.images);
+          }
         } else {
           console.error('Trip or memory not found');
         }
@@ -64,8 +81,128 @@
     }
   });
 
-  let gradientColors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
-  $: gradientStyle = `conic-gradient(${gradientColors.map((c, i) => `${c} ${i * 72}deg ${(i + 1) * 72}deg`).join(',')})`;
+  $: if (memory?.images?.length && columnGroups.length) {
+    const angleOffset = -(360 / memory.images.length) * currentImageIndex;
+    const gradients = makeConcentricGradients(columnGroups, angleOffset);
+
+    //to make donut form
+    const MASK_COUNT = 3;
+    for (let i = 0; i < MASK_COUNT; i++) {
+      gradients.push('radial-gradient(circle, var(--black) 100%)');
+    }
+
+    gradientLayers = gradients.map((bg, i) => {
+      const scale = 1 - i * 0.1;
+      return `background: ${bg};
+              width: ${scale * 100}%;
+              height: ${scale * 100}%;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              border-radius: 50%;`;
+    });
+  }
+
+  //convert rgb to hsb
+  function rgbToHsb(r, g, b) {
+    const r_ = r / 255, g_ = g / 255, b_ = b / 255;
+    const max = Math.max(r_, g_, b_), min = Math.min(r_, g_, b_);
+    const delta = max - min;
+
+    let h = 0;
+    if (delta !== 0) {
+      if (max === r_) h = ((g_ - b_) / delta) % 6;
+      else if (max === g_) h = (b_ - r_) / delta + 2;
+      else h = (r_ - g_) / delta + 4;
+      h = Math.round(h * 60);
+      if (h < 0) h += 360;
+    }
+
+    const s = max === 0 ? 0 : delta / max;
+    const v = max;
+
+    return [h, s * 100, v * 255];
+  }
+
+  async function getImageData(url) {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.src = url;
+    await img.decode();
+
+    //to shorten rendering time
+    const MAX_WIDTH = 100;
+    const ratio = MAX_WIDTH / img.width;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = MAX_WIDTH;
+    canvas.height = Math.round(img.height * ratio);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+
+  //make column colorset from image
+  function getColumnColors(imageData, columnCount = 5) {
+    const { data, width, height } = imageData;
+    const columnWidth = Math.floor(width / columnCount);
+    const columns = Array.from({ length: columnCount }, () => []);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const colIndex = Math.min(Math.floor(x / columnWidth), columnCount - 1);
+        const idx = (y * width + x) * 4;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+
+        const [h, s, br] = rgbToHsb(r, g, b);
+        if (s < 10 || br < 20) continue; //color correction
+
+        const rgb = `rgb(${r},${g},${b})`;
+        columns[colIndex].push(rgb);
+      }
+    }
+
+    return columns.map(column => {
+      const count = {};
+      column.forEach(color => count[color] = (count[color] || 0) + 1);
+      return Object.entries(count).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'rgb(0,0,0)';
+    });
+  }
+
+  //make column color set for gradient
+  async function extractColumnwiseColors(imageUrls) {
+    const columnColorGroups = [[], [], [], [], []];
+
+    for (const url of imageUrls) {
+      const imageData = await getImageData(url);
+      const colColors = getColumnColors(imageData);
+      colColors.forEach((color, index) => {
+        columnColorGroups[index].push(color);
+      });
+    }
+
+    return columnColorGroups.reverse();
+  }
+
+  function makeConcentricGradients(groups, rotationOffset = 0) {
+    return groups.map(colors => {
+      const step = 360 / colors.length;
+      return `conic-gradient(from ${rotationOffset}deg, ${colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
+    });
+  }
+
+  function nextImage() {
+    if (memory?.images?.length > 0) {
+      currentImageIndex = (currentImageIndex + 1) % memory.images.length;
+    }
+  }
+
+  function prevImage() {
+    if (memory?.images?.length > 0) {
+      currentImageIndex = (currentImageIndex - 1 + memory.images.length) % memory.images.length;
+    }
+  }
 </script>
 
 <main>
@@ -88,22 +225,27 @@
       </div>
 
       <div class="wheel-container">
-        <div class="gradient-wheel" style="background-image: {gradientStyle};"></div>
-      </div>
-
-      <div class="image-preview">
-        {#if memory.images && memory.images.length > 0}
-          <h2>Images</h2>
-          <div class="image-grid">
-            {#each memory.images as img}
-              <img src={typeof img === 'string' ? img : URL.createObjectURL(img)} alt="memory image" />
+        <div class="wheel-mask">
+          <div
+            class="gradient-wheel"
+            style={`transform: translateY(-50%) rotate(${rotationAngle}deg); transform-origin: center center;`}
+          >
+            {#each gradientLayers as style}
+              <div class="layer" style={style}></div>
             {/each}
           </div>
-        {:else}
-          <p class="no-image">No images uploaded.</p>
+        </div>
+
+        {#if currentImage}
+          <img class="preview-img" src={currentImage} alt="Current Image" />
         {/if}
+
+        <div class="arrow-controls">
+          <button on:click={prevImage}>▲</button>
+          <button on:click={nextImage}>▼</button>
+        </div>
       </div>
-    {/if} <!-- ✅ 이 줄 빠지면 Svelte 에러 발생 -->
+    {/if}
   </div>
 </main>
 
@@ -184,44 +326,67 @@
     background-color: var(--gray-100);
   }
 
-  .gradient-wheel {
-    width: 300px;
-    height: 300px;
-    margin: 2rem auto;
-    border-radius: 50%;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-  }
-
   .wheel-container {
     display: flex;
-    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-top: 2rem;
+    height: 40vw;
+    position: relative;
   }
 
-  .image-preview {
-    padding: 1rem 2rem;
-    color: white;
+  .wheel-mask {
+    width: 50vw;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
   }
 
-  .image-preview h2 {
-    font-size: 1.25rem;
-    margin-bottom: 0.75rem;
+  .gradient-wheel {
+    position: absolute;
+    width: 35vw;
+    height: 35vw;
+    left: -17.5vw;
+    top: 50%;
+    border-radius: 50%;
   }
 
-  .image-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 1rem;
+  .layer {
+    position: absolute;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
-  .image-grid img {
-    width: 100%;
-    border-radius: 8px;
+  .preview-img {
+    position: absolute;
+    top: 50%;
+    left: calc(17.5vw + 180px);
+    transform: translate(-50%, -50%);
+    width: 300px;
+    height: 200px;
     object-fit: cover;
-    aspect-ratio: 1 / 1;
+    z-index: 3;
   }
 
-  .no-image {
-    font-size: 0.95rem;
-    color: var(--gray-400);
+  .arrow-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: absolute;
+    top: 50%;
+    left: calc(17.5vw + 340px);
+    transform: translateY(-50%);
+    z-index: 4;
+  }
+
+  .arrow-controls button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: white;
+    cursor: pointer;
   }
 </style>
+
