@@ -117,9 +117,11 @@
           .attr('class', 'marker')
           .attr('fill', Colors.planner.med400)
           .on('click', function (event, d) {
-            d3.selectAll('.trip-label').remove();
-            d3.selectAll('.trip-marker').remove();
-            d3.selectAll('.trip-line').remove();
+            d3.selectAll('.trip-label, .trip-marker, .trip-line')
+              .transition()
+              .duration(200)
+              .style('opacity', 0)
+              .remove();
             event.stopPropagation();
 
             const key = `${d.location.lat},${d.location.lng}`;
@@ -139,7 +141,11 @@
                   .attr('y2', baseY - (trips.length - 1) * 24 + 6)
                   .attr('stroke', Colors.planner.med400)
                   .attr('stroke-width', 2)
-                  .attr('class', 'trip-line');
+                  .attr('class', 'trip-line')
+                  .style('opacity', 0)
+                  .transition()
+                  .duration(150)
+                  .style('opacity', 1);
               }
 
               trips.forEach((trip, idx) => {
@@ -169,14 +175,22 @@
                   .attr('font-size', '12px')
                   .attr('class', 'trip-label')
                   .text(`${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}`);
+
+                markerGroup
+                  .style('opacity', 0)
+                  .transition()
+                  .duration(200)
+                  .style('opacity', 1);
               });
             }
           });
 
         svg.on('click', () => {
-          d3.selectAll('.trip-label').remove();
-          d3.selectAll('.trip-marker').remove();
-          d3.selectAll('.trip-line').remove();
+          d3.selectAll('.trip-label, .trip-marker, .trip-line')
+            .transition()
+            .duration(200)
+            .style('opacity', 0)
+            .remove();
         });
 
         const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -255,5 +269,17 @@
 
   :global(.dark .marker) {
     fill: var(--memory-500);
+  }
+
+  :global(.dark .trip-marker) {
+    fill: var(--memory-500);
+  }
+
+  :global(.dark .trip-line) {
+    stroke: var(--memory-500);
+  }
+
+  :global(.dark .trip-label) {
+    fill: white;
   }
 </style>

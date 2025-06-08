@@ -6,11 +6,7 @@
     import { Loader } from '@googlemaps/js-api-loader';
     import { ref, push, onValue } from 'firebase/database';
     import { db } from '../../firebase';
-    import * as UC from '@uploadcare/file-uploader';
-    import "@uploadcare/file-uploader/web/uc-file-uploader-regular.min.css"
-
-    UC.defineComponents(UC);
-
+    import { UploadClient } from '@uploadcare/upload-client';
   
     export let showPopup = false;
     export let onCancel = () => {};
@@ -18,20 +14,22 @@
     let startDate = '';
     let endDate = '';
     let isGoogleLoaded = false;
+    let dragActive = false;
     let customLocation = '';
     let customLocationInput: HTMLInputElement;
+    let images: File[] = [];
+    let imageUrls: string[] = [];
     let showLocationError = false;
     let showImageError = false;
     let hasAttemptedSubmit = false;
     let isFormValid = true;
     let selectedTripId = ''; //for dropdown
     let selectedLocation = '';
-    let uploaderCtxEl: HTMLElement;
-    let uploaderCtx: any;
 
     let tripOptions: { value: string; label: string }[] = [];
-    let uploadedImageURLs: string[] = [];
 
+    // Initialize Uploadcare client
+    const uploadcare = new UploadClient({ publicKey: import.meta.env.VITE_UPLOADCARE_PUBLIC_KEY });
 
     onMount(() => {
         // reference to the trips node
@@ -55,29 +53,19 @@
             tripOptions = options;
         });
     });
+  
 
-    $: if (uploaderCtx) {
-        uploaderCtx.on('change', () => {
-            const urls = uploaderCtx.files().map(file => file?.cdnUrl).filter(Boolean);
-            uploadedImageURLs = urls;
-            console.log('uploadedImageURLs:', uploadedImageURLs);
-
-            if (uploadedImageURLs.length > 0) {
-                showImageError = false;
-                hasAttemptedSubmit = true;
-            }
-        });
-    } 
-
-    $: isFormValid = (
-        (selectedLocation !== '' && (!isCustomLocation() || customLocation.trim() !== '')) &&
-        uploadedImageURLs.length > 0
-    );
+    $: if (hasAttemptedSubmit) {
+        isFormValid = (
+            (selectedLocation !== '' && (!isCustomLocation() || customLocation.trim() !== '')) &&
+            images.length > 0
+        );
+    }
 
     $: if (selectedTripId && selectedTripId !== 'custom') {
         const trip = tripOptions.find(t => t.value === selectedTripId);
         if (trip) {
-            selectedLocation = trip.label.split(' (')[0]; 
+            selectedLocation = trip.label.split(' (')[0]; // label에서 name 추출
             const tripRef = ref(db, `trips/${selectedTripId}`);
             onValue(tripRef, (snapshot) => {
                 const val = snapshot.val();
@@ -126,29 +114,87 @@
         }
       });
     }
-
-    function reset() {
-        showPopup = false;
-        selectedLocation = '';
-        customLocation = '';
-        startDate = '';
-        endDate = '';
-        showLocationError = false;
-        showImageError = false;
-        uploadedImageURLs = [];
-        hasAttemptedSubmit = false;
-    }
   
+    async function uploadImage(file: File): Promise<string> {
+        try {
+            const result = await uploadcare.uploadFile(file);
+            return `https://ucarecdn.com/${result.uuid}/`;
+        } catch (error) {
+            console.error('Upload failed:', error);
+            throw error;
+        }
+    }
+
+    async function handleInputChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files) {
+            const newFiles = Array.from(input.files);
+            images = [...images, ...newFiles];
+            
+            isUploading = true;
+            try {
+                const newUrls = await Promise.all(newFiles.map(uploadImage));
+                imageUrls = [...imageUrls, ...newUrls];
+            } catch (error) {
+                // Handle error (show error message to user)
+                console.error('Upload failed:', error);
+            } finally {
+                isUploading = false;
+            }
+        }
+    }
+
+    async function handleDrop(event: DragEvent) {
+        event.preventDefault();
+        dragActive = false;
+
+        const droppedFiles = Array.from(event.dataTransfer?.files || [])
+            .filter(file => file.type.startsWith('image/'));
+
+        if (droppedFiles.length > 0) {
+            images = [...images, ...droppedFiles];
+            
+            isUploading = true;
+            try {
+                const newUrls = await Promise.all(droppedFiles.map(uploadImage));
+                imageUrls = [...imageUrls, ...newUrls];
+            } catch (error) {
+                // Handle error (show error message to user)
+                console.error('Upload failed:', error);
+            } finally {
+                isUploading = false;
+            }
+        }
+    }
+
+    function removeImage(img: File) {
+        const index = images.indexOf(img);
+        if (index > -1) {
+            images = images.filter((_, i) => i !== index);
+            imageUrls = imageUrls.filter((_, i) => i !== index);
+        }
+    }
+
     function handleCancelClick() {
         onCancel();
         reset();
+    }
+  
+    function handleDragOver(event: DragEvent) {
+      event.preventDefault();
+      dragActive = true;
+    }
+  
+    function handleDragLeave(event: DragEvent) {
+      event.preventDefault();
+      dragActive = false;
     }
   
     async function handleAddMemory() {
         hasAttemptedSubmit = true;
 
         showLocationError = selectedLocation === '' || (isCustomLocation() && customLocation.trim() === '');
-        showImageError = uploadedImageURLs.length === 0;
+        showImageError = images.length === 0;
 
         if (showLocationError || showImageError) return;
 
@@ -159,19 +205,12 @@
             location: finalLocation,
             startDate,
             endDate,
-            images: uploadedImageURLs,
+            images: imageUrls,
             createdAt: new Date().toISOString()
         };
         try {
             console.log(`tid = ${selectedTripId}`);
             const memoryRef = ref(db, `trips/${selectedTripId}/memories`);
-            const newMemory = {
-                location: finalLocation,
-                startDate: startDate,
-                endDate: endDate,
-                images: uploadedImageURLs,
-                createdAt: new Date().toISOString()
-            };
             const addedRef = await push(memoryRef, newMemory);
 
             reset();
@@ -180,7 +219,20 @@
             console.error('Error saving memory:', error);
         }
     }
-
+  
+    function reset() {
+        showPopup = false;
+        selectedLocation = '';
+        customLocation = '';
+        images = [];
+        imageUrls = [];
+        startDate = '';
+        endDate = '';
+        showLocationError = false;
+        showImageError = false;
+    }
+  
+    let isUploading = false;
 </script>
   
 {#if showPopup}
@@ -237,26 +289,47 @@
                 <p class="error-message">Please enter a location.</p>
             {/if}
 
-            <div class="input-form uploader-wrapper">
+            <div class="input-form">
+                <!-- svelte-ignore a11y_label_has_associated_control -->
                 <label>Upload images</label>
-                <uc-config
-                    ctx-name="my-uploader"
-                    source-list="local, camera, gdrive"
-                    pubkey="d4067f33e4ac8363f078"
-                    multiple="true"
-                    multiple-min= 1
-
-                ></uc-config>
-                
-                <uc-file-uploader-minimal
-                    ctx-name="my-uploader"
-                    class="uc-dark uc-gray"
-                ></uc-file-uploader-minimal>
-                
-                <uc-upload-ctx-provider
-                    ctx-name="my-uploader"
-                ></uc-upload-ctx-provider>
-
+                <div class="drop-area {dragActive ? 'active' : ''} {isUploading ? 'uploading' : ''}"
+                    role="button"
+                    tabindex="0"
+                    on:drop={handleDrop}
+                    on:dragover={handleDragOver}
+                    on:dragleave={handleDragLeave}
+                >
+                    <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        on:change={handleInputChange}
+                        style="display: none;"
+                        id="fileInput"
+                    />
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <div class="drop-label" role="button" tabindex="0" on:click={() => document.getElementById('fileInput')?.click()}>
+                        {#if images.length === 0}
+                            <span>Drop image here</span>
+                        {:else}
+                            <div class="preview-list">
+                                {#each images as img, i}
+                                    <div class="preview-item">
+                                        <button class="delete-button" on:click={() => removeImage(img)}>×</button>
+                                        <img src={imageUrls[i] || URL.createObjectURL(img)} alt={img.name} />
+                                        <p>{img.name}</p>
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                    {#if isUploading}
+                        <div class="upload-overlay">
+                            <div class="spinner"></div>
+                            <p>Uploading...</p>
+                        </div>
+                    {/if}
+                </div>
                 {#if showImageError}
                     <p class="error-message">Please upload at least one image.</p>
                 {/if}
@@ -266,7 +339,7 @@
                 <Button text="Cancel" type="gray" onClick={handleCancelClick} />
                 <Button text="Add a new memory" type="orange" 
                     onClick={handleAddMemory} 
-                    disabled={!isFormValid}/>
+                    disabled={hasAttemptedSubmit && !isFormValid}/>
             </div>
         </div>
     </div>
@@ -369,6 +442,78 @@
         margin-bottom: 0;
     }
 
+    .preview-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        max-height: 200px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .preview-item {
+        position: relative;
+        width: 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .preview-item img {
+        width: 100%;
+        border-radius: 6px;
+        object-fit: cover;
+    }
+
+    .preview-item p {
+        font-size: 0.75rem;
+        text-align: center;
+        margin-top: 0.3rem;
+        color: var(--gray-400);
+    }
+
+    .delete-button {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(38, 38, 38, 0.5);
+        border: none;
+        color: var(--white);
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+
+    .drop-area {
+        width: 100%;
+        min-height: 120px;
+        background: var(--gray-900);
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--white);
+        transition: border-color 0.2s;
+        cursor: pointer;
+    }
+
+    .drop-area.active {
+        border-color: var(--memory-500);
+        color: var(--memory-500);
+    }
+
+    .drop-label {
+        padding: 2rem 1rem;
+        text-align: center;
+        width: 100%;
+        cursor: pointer;
+    }
+
     option.custom-option {
         color: var(--memory-500);
     }
@@ -377,5 +522,40 @@
         display: flex;
         gap: 1rem;
         margin-top: 2rem;
+    }
+
+    .drop-area.uploading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.8;
+    }
+
+    .upload-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .spinner {
+        width: 30px;
+        height: 30px;
+        border: 3px solid var(--gray-200);
+        border-top-color: var(--planner-400);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 </style>
