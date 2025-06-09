@@ -3,6 +3,7 @@
     export let destination = '';
     export let onConfirm: () => void;
     export let onCancel: () => void;
+    export let darkMode = false;
 
     function handlePopupClick(event: MouseEvent) {
         event.stopPropagation();
@@ -12,7 +13,7 @@
 {#if showPopup}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="overlay" role="button" tabindex="0">
-        <div class="popup" role="button" tabindex="0" onclick={handlePopupClick}>
+        <div class="popup" class:dark-mode={darkMode} role="button" tabindex="0" onclick={handlePopupClick}>
             <h2>Delete Trip</h2>
             <p>Are you sure you want to delete Trip to {destination}?</p>
             <div class="button-group">
@@ -86,6 +87,34 @@
 
     .delete-btn:hover {
         background: var(--memory-400);
+        color: white;
+    }
+
+    .popup.dark-mode {
+        background-color: var(--gray-900);
+        color: var(--white);
+    }
+
+    .popup.darkdark-mode h2 {
+        color: var(--memory-400);
+    }
+
+    .popup.dark-mode p {
+        color: var(--gray-400);
+    }
+
+    .popup.dark-mode button {
+        background: var(--gray-50);
+        color: var(--gray-400);
+    }
+
+    .popup.dark-mode .cancel-btn:hover {
+        background-color: var(--gray-100);
+        color: var(--gray-600);
+    }
+
+    .popup.dark-mode .delete-btn:hover {
+        background: var(--memory-500);
         color: white;
     }
 </style> 

@@ -68,7 +68,7 @@
         }
 
         if (memory?.images?.length) {
-          columnGroups = await extractColumnwiseColors(memory.images, true);
+          columnGroups = await extractColumnwiseColors(memory.images, false);
           currentImageIndex = 0;
         }
       } else {
@@ -79,12 +79,13 @@
     }
   }
 
+  //get information from other trip in same region
   async function loadDroppedTrip(tripId, memoryId) {
     const memorySnap = await get(ref(db, `trips/${tripId}/memories/${memoryId}`));
     if (memorySnap.exists()) {
       droppedTripId = tripId;
       droppedMemory = memorySnap.val();
-      droppedColumnGroups = await extractColumnwiseColors(droppedMemory.images, false);
+      droppedColumnGroups = await extractColumnwiseColors(droppedMemory.images, true);
       droppedImageIndex = 0;
       isDroppedVisible = true;
     }
@@ -121,6 +122,7 @@
     return ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 
+  //convert rgb to hsb for color adjustment
   function rgbToHsb(r, g, b) {
     const r_ = r / 255, g_ = g / 255, b_ = b / 255;
     const max = Math.max(r_, g_, b_), min = Math.min(r_, g_, b_);
@@ -141,6 +143,7 @@
     return [h, s * 100, v * 255];
   }
 
+  // get most frequent color from each section
   function getColumnColors(imageData, columnCount = 5) {
     const { data, width, height } = imageData;
     const columnWidth = Math.floor(width / columnCount);
@@ -167,20 +170,28 @@
     });
   }
 
+  //collect color by column
   async function extractColumnwiseColors(imageUrls, reverseColumns = true) {
     const columnColorGroups = [[], [], [], [], []];
 
     for (const url of imageUrls) {
       const imageData = await getImageData(url);
-      const colColors = getColumnColors(imageData);
+      let colColors = getColumnColors(imageData);
+
+      // reverse column order
+      if (reverseColumns) {
+        colColors = colColors.reverse();
+      }
+
       colColors.forEach((color, index) => {
         columnColorGroups[index].push(color);
       });
     }
 
-    return reverseColumns ? columnColorGroups.reverse() : columnColorGroups;
+    return columnColorGroups;
   }
 
+  // make gradient wheel
   function makeConcentricGradients(groups, rotationOffset = 0, imageCount = 1, isDropped = false) {
     const directionFactor = 1;
     const additionalAdjustment = isDropped ? -360 / imageCount : 0;
@@ -198,6 +209,7 @@
     const angleOffset = -(360 / memory.images.length) * currentImageIndex;
     const gradients = makeConcentricGradients(columnGroups, angleOffset, memory.images.length, false);
 
+    //mask for donut shape
     const MASK_COUNT = 3;
     for (let i = 0; i < MASK_COUNT; i++) {
       gradients.push('radial-gradient(circle, var(--black) 100%)');
