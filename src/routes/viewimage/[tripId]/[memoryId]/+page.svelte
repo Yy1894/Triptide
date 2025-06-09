@@ -19,16 +19,21 @@
   $: tripId = page.params.tripId;
   $: memoryId = page.params.memoryId;
   $: currentImage = memory?.images?.[currentImageIndex];
+
+  //make gradient-wheel rotate with currwnt image
   $: {
     if (memory?.images?.length > 0) {
       const imageCount = memory.images.length;
       const sliceAngle = 360 / imageCount;
-      rotationAngle = 90 - sliceAngle / 2 + sliceAngle * currentImageIndex;
-      console.log('Rotation angle:', rotationAngle);
+      rotationAngle = sliceAngle * currentImageIndex - 90;
     } else {
       rotationAngle = 0;
     }
   }
+  $: wheelStyle = {
+      transform: `translateY(-50%) rotate(${rotationAngle}deg)`,
+      transformOrigin: 'center center'
+    };
 
   onMount(async () => {
     if (tripId && memoryId) {
@@ -156,7 +161,7 @@
         const r = data[idx], g = data[idx + 1], b = data[idx + 2];
 
         const [h, s, br] = rgbToHsb(r, g, b);
-        if (s < 10 || br < 20) continue; //color correction
+        if (br < 20 || s < 10) continue; //color correction
 
         const rgb = `rgb(${r},${g},${b})`;
         columns[colIndex].push(rgb);
@@ -188,7 +193,8 @@
   function makeConcentricGradients(groups, rotationOffset = 0) {
     return groups.map(colors => {
       const step = 360 / colors.length;
-      return `conic-gradient(from ${rotationOffset}deg, ${colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
+      const start = rotationOffset + 90 - 180/memory.images.length;
+      return `conic-gradient(from ${start}deg, ${colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
     });
   }
 
@@ -226,10 +232,7 @@
 
       <div class="wheel-container">
         <div class="wheel-mask">
-          <div
-            class="gradient-wheel"
-            style={`transform: translateY(-50%) rotate(${rotationAngle}deg); transform-origin: center center;`}
-          >
+          <div class="gradient-wheel" style={wheelStyle}>
             {#each gradientLayers as style}
               <div class="layer" style={style}></div>
             {/each}
@@ -348,6 +351,7 @@
     height: 35vw;
     left: -17.5vw;
     top: 50%;
+    transform: translateY(-50%);
     border-radius: 50%;
   }
 
