@@ -7,6 +7,7 @@
   import { ref, get } from 'firebase/database';
   import { db } from '../../firebase';
   import { goto } from '$app/navigation';
+  import NewMemoryPopup from '$lib/components/NewMemoryPopup.svelte';
 
   let mapContainer: HTMLDivElement;
 
@@ -65,6 +66,8 @@
   }
 
   let cleanup: (() => void) | undefined;
+  let showNewMemoryPopup = false;
+  let selectedTripIdForMemory = '';
 
   onMount(() => {
     let mounted = true;
@@ -176,8 +179,32 @@
                   .attr('class', 'trip-marker')
                   .attr('data-has-memory', trip.hasMemory ? 'true' : 'false')
                   .style('cursor', 'pointer')
-                  .on('click', function () {
-                    goto(`/itinerary/${trip.tid}`);
+                  .on('click', async function () {
+                    // Use document.documentElement for dark mode detection
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const hasMemory = trip.hasMemory;
+
+                    if (isDark) {
+                      if (hasMemory) {
+                        // Fetch the topmost memoryId for this trip
+                        const tripRef = ref(db, `trips/${trip.tid}/memories`);
+                        const snapshot = await get(tripRef);
+                        if (snapshot.exists()) {
+                          const memoryIds = Object.keys(snapshot.val());
+                          if (memoryIds.length > 0) {
+                            const topMemoryId = memoryIds[0];
+                            goto(`/viewimage/${trip.tid}/${topMemoryId}`);
+                          }
+                        }
+                      } else {
+                        // Show NewMemoryPopup for this trip
+                        selectedTripIdForMemory = trip.tid;
+                        showNewMemoryPopup = true;
+                      }
+                    } else {
+                      // Default: go to itinerary
+                      goto(`/itinerary/${trip.tid}`);
+                    }
                   });
 
                 markerGroup.append('text')
@@ -187,8 +214,32 @@
                   .attr('class', 'trip-label')
                   .text(`${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}`)
                   .style('cursor', 'pointer')
-                  .on('click', function () {
-                    goto(`/itinerary/${trip.tid}`);
+                  .on('click', async function () {
+                    // Use document.documentElement for dark mode detection
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const hasMemory = trip.hasMemory;
+
+                    if (isDark) {
+                      if (hasMemory) {
+                        // Fetch the topmost memoryId for this trip
+                        const tripRef = ref(db, `trips/${trip.tid}/memories`);
+                        const snapshot = await get(tripRef);
+                        if (snapshot.exists()) {
+                          const memoryIds = Object.keys(snapshot.val());
+                          if (memoryIds.length > 0) {
+                            const topMemoryId = memoryIds[0];
+                            goto(`/viewimage/${trip.tid}/${topMemoryId}`);
+                          }
+                        }
+                      } else {
+                        // Show NewMemoryPopup for this trip
+                        selectedTripIdForMemory = trip.tid;
+                        showNewMemoryPopup = true;
+                      }
+                    } else {
+                      // Default: go to itinerary
+                      goto(`/itinerary/${trip.tid}`);
+                    }
                   });
 
                 markerGroup
@@ -234,6 +285,10 @@
 </script>
 
 <div bind:this={mapContainer} class="map-wrapper"></div>
+
+{#if showNewMemoryPopup}
+  <NewMemoryPopup bind:showPopup={showNewMemoryPopup} onCancel={() => showNewMemoryPopup = false} />
+{/if}
 
 <style>
   .map-wrapper {
