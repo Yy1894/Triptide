@@ -311,23 +311,35 @@
   }
 
   .trip-switcher button {
-    flex: 0 0 auto;
-    background-color: white;
-    border: 1px solid var(--gray-200);
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    background: none;
+    border: none;
+    font-size: 1rem;
     cursor: pointer;
-    white-space: nowrap;
+    padding: 0.75rem 0;
+    color: var(--gray-400);
     transition: color 0.3s ease;
+    position: relative;
+    text-align: center;
   }
 
   .trip-switcher button:hover {
-    background-color: var(--gray-100);
+    color: var(--white);
   }
 
   .trip-switcher button.active {
+    color: var(--memory-500);
+    font-weight: 600;
+  }
+
+  .trip-switcher button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
     background-color: var(--memory-500);
+    transition: transform 0.2s ease;
   }
 
   .wheel-container {
