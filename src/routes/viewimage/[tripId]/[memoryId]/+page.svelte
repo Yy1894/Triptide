@@ -67,7 +67,7 @@
         }
 
         if (memory?.images?.length) {
-          columnGroups = await extractColumnwiseColors(memory.images);
+          columnGroups = await extractColumnwiseColors(memory.images, true);
           currentImageIndex = 0;
         }
       } else {
@@ -83,7 +83,7 @@
     if (memorySnap.exists()) {
       droppedTripId = tripId;
       droppedMemory = memorySnap.val();
-      droppedColumnGroups = await extractColumnwiseColors(droppedMemory.images);
+      droppedColumnGroups = await extractColumnwiseColors(droppedMemory.images, false);
       droppedImageIndex = 0;
     }
   }
@@ -101,28 +101,6 @@
     transform: `translateY(-50%) rotate(${rotationAngle}deg)`,
     transformOrigin: 'center center'
   };
-
-  $: if (memory?.images?.length && columnGroups.length) {
-    const angleOffset = -(360 / memory.images.length) * currentImageIndex;
-    const gradients = makeConcentricGradients(columnGroups, angleOffset);
-
-    const MASK_COUNT = 3;
-    for (let i = 0; i < MASK_COUNT; i++) {
-      gradients.push('radial-gradient(circle, var(--black) 100%)');
-    }
-
-    gradientLayers = gradients.map((bg, i) => {
-      const scale = 1 - i * 0.1;
-      return `background: ${bg};
-              width: ${scale * 100}%;
-              height: ${scale * 100}%;
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              border-radius: 50%;`;
-    });
-  }
 
   async function getImageData(url) {
     const img = new Image();
@@ -173,7 +151,7 @@
         const r = data[idx], g = data[idx + 1], b = data[idx + 2];
 
         const [h, s, br] = rgbToHsb(r, g, b);
-        if (br < 20 || s < 10) continue;
+        if (br < 5 || s < 20) continue;
 
         const rgb = `rgb(${r},${g},${b})`;
         columns[colIndex].push(rgb);
@@ -187,7 +165,7 @@
     });
   }
 
-  async function extractColumnwiseColors(imageUrls) {
+  async function extractColumnwiseColors(imageUrls, reverseColumns = true) {
     const columnColorGroups = [[], [], [], [], []];
 
     for (const url of imageUrls) {
@@ -198,20 +176,47 @@
       });
     }
 
-    return columnColorGroups.reverse();
+    return reverseColumns ? columnColorGroups.reverse() : columnColorGroups;
   }
 
-  function makeConcentricGradients(groups, rotationOffset = 0) {
+  function makeConcentricGradients(groups, rotationOffset = 0, imageCount = 1, isDropped = false) {
+    const directionFactor = 1;
+    const additionalAdjustment = isDropped ? -360 / imageCount : 0;
     return groups.map(colors => {
       const step = 360 / colors.length;
-      const start = rotationOffset + 90 - 180 / memory.images.length;
-      return `conic-gradient(from ${start}deg, ${colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
+      const rawStart = rotationOffset + directionFactor * (90 - 180 / imageCount);
+      const start = isDropped ? -rawStart + additionalAdjustment : rawStart;
+      return `conic-gradient(from ${start}deg, ${
+        colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')
+      })`;
+    });
+  }
+
+  $: if (memory?.images?.length && columnGroups.length) {
+    const angleOffset = -(360 / memory.images.length) * currentImageIndex;
+    const gradients = makeConcentricGradients(columnGroups, angleOffset, memory.images.length, false);
+
+    const MASK_COUNT = 3;
+    for (let i = 0; i < MASK_COUNT; i++) {
+      gradients.push('radial-gradient(circle, var(--black) 100%)');
+    }
+
+    gradientLayers = gradients.map((bg, i) => {
+      const scale = 1 - i * 0.1;
+      return `background: ${bg};
+              width: ${scale * 100}%;
+              height: ${scale * 100}%;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              border-radius: 50%;`;
     });
   }
 
   $: if (droppedMemory?.images?.length && droppedColumnGroups.length) {
     const angleOffset = -(360 / droppedMemory.images.length) * droppedImageIndex;
-    const gradients = makeConcentricGradients(droppedColumnGroups, angleOffset);
+    const gradients = makeConcentricGradients(droppedColumnGroups, angleOffset, droppedMemory.images.length, true);
 
     const MASK_COUNT = 3;
     for (let i = 0; i < MASK_COUNT; i++) {
@@ -263,13 +268,17 @@
 
   function handleDrop(event) {
     event.preventDefault();
+    if (droppedMemory) return;
+
     const droppedTripId = event.dataTransfer.getData("tripId");
     const droppedMemoryId = event.dataTransfer.getData("memoryId");
     loadDroppedTrip(droppedTripId, droppedMemoryId);
   }
 
   function allowDrop(event) {
-    event.preventDefault();
+    if (!droppedMemory) {
+      event.preventDefault();
+    }
   }
 </script>
 
@@ -316,8 +325,12 @@
           {/if}
 
           <div class="arrow-controls">
-            <button on:click={prevImage}>▲</button>
-            <button on:click={nextImage}>▼</button>
+            <button on:click={prevImage}>
+              <img src="/lucide_chevron-up.png" alt="Up" width="24" height="24" />
+            </button>
+            <button on:click={nextImage}>
+              <img src="/lucide_chevron-down.png" alt="Down" width="24" height="24" />
+            </button>
           </div>
         </div>
 
@@ -335,8 +348,12 @@
               <img class="dropped-img" src={droppedCurrentImage} alt="Dropped Image" />
             {/if}
             <div class="dropped-controls">
-              <button on:click={prevDroppedImage}>▲</button>
-              <button on:click={nextDroppedImage}>▼</button>
+              <button on:click={prevDroppedImage}>
+                <img src="/lucide_chevron-up.png" alt="Up" width="24" height="24" />
+              </button>
+              <button on:click={nextDroppedImage}>
+                <img src="/lucide_chevron-down.png" alt="Down" width="24" height="24" />
+              </button>
             </div>
           {/if}
         </div>
