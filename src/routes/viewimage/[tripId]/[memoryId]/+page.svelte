@@ -22,6 +22,7 @@
   let droppedGradientLayers = [];
   let droppedWheelStyle = {};
   let droppedCurrentImage = null;
+  let isDroppedVisible = true;
 
   $: tripId = $page.params.tripId;
   $: memoryId = $page.params.memoryId;
@@ -85,6 +86,7 @@
       droppedMemory = memorySnap.val();
       droppedColumnGroups = await extractColumnwiseColors(droppedMemory.images, false);
       droppedImageIndex = 0;
+      isDroppedVisible = true;
     }
   }
 
@@ -268,7 +270,7 @@
 
   function handleDrop(event) {
     event.preventDefault();
-    if (droppedMemory) return;
+    if (droppedMemory && isDroppedVisible) return;
 
     const droppedTripId = event.dataTransfer.getData("tripId");
     const droppedMemoryId = event.dataTransfer.getData("memoryId");
@@ -276,9 +278,13 @@
   }
 
   function allowDrop(event) {
-    if (!droppedMemory) {
+    if (!droppedMemory || !isDroppedVisible) {
       event.preventDefault();
     }
+  }
+
+  function closeDroppedWheel() {
+    isDroppedVisible = false;
   }
 </script>
 
@@ -336,7 +342,9 @@
 
         <!-- rightside dropped view -->
         <div class="wheel-section drop-zone" on:drop={handleDrop} on:dragover={allowDrop}>
-          {#if droppedMemory}
+          {#if droppedMemory && isDroppedVisible}
+            <img src="/lucide_x.png" alt="Close" class="close-button" on:click={closeDroppedWheel} />
+        
             <div class="dropped-mask">
               <div class="dropped-wheel" style={droppedWheelStyle}>
                 {#each droppedGradientLayers as style}
@@ -344,9 +352,11 @@
                 {/each}
               </div>
             </div>
+        
             {#if droppedCurrentImage}
               <img class="dropped-img" src={droppedCurrentImage} alt="Dropped Image" />
             {/if}
+        
             <div class="dropped-controls">
               <button on:click={prevDroppedImage}>
                 <img src="/lucide_chevron-up.png" alt="Up" width="24" height="24" />
@@ -569,6 +579,16 @@
     height: 35vw;
     right: -15vw;
     border-radius: 50%;
+  }
+
+  .close-button {
+    position: absolute;
+    top: -48px;
+    right: 2rem;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    z-index: 5;
   }
 </style>
 
