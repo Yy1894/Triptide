@@ -1,32 +1,180 @@
 # Travel App
 
+## Student Information
+
+Name: Adelia Putri  
+Student ID: 20210782  
+Email: adelia@kaist.ac.kr  
+
+Name:  
+Student ID:  
+Email:
+
+Git Repository: [Travel App](http://git.prototyping.id/20210782/travel-app)
+
+Demo Video:
+
+## Table of Contents
+- [Travel App](#travel-app)
+  - [Student Information](#student-information)
+  - [Table of Contents](#table-of-contents)
+  - [App Description](#app-description)
+  - [How to Start](#how-to-start)
+  - [App Feature](#app-feature)
+    - [Planner](#planner)
+      - [Home Page](#home-page)
+      - [Itinerary Page](#itinerary-page)
+      - [My Trips Page](#my-trips-page)
+    - [Memory](#memory)
+  - [App Features](#app-features)
+  - [Code Organization](#code-organization)
+    - [Tech Stack](#tech-stack)
+    - [Component \& File Structure](#component--file-structure)
+  - [Design Patterns](#design-patterns)
+    - [MVC (Model-View-Controller)](#mvc-model-view-controller)
+    - [Observer Pattern](#observer-pattern)
+    - [Singleton Pattern](#singleton-pattern)
+    - [Service Pattern](#service-pattern)
+  - [Limitations](#limitations)
+  - [Acknowledgement](#acknowledgement)
+
+## App Description
+
+**TravelApp** is an intelligent travel planner that helps users create personalized itineraries by learning from their past trips. The app connects memories with future plans, allowing users to revisit previous journeys through photos and color mood boards, while planning new adventures based on those experiences. TravelApp leverages AI-powered recommendations, interactive maps, and seamless photo management to make travel planning both enjoyable and meaningful.
+
 ## How to Start
 
-First, you need to clone this repository by clicking the triple dots button &rarr; `Open with VS Code` or using the command below:
+1. **Clone the repository:**
+   ```bash
+   git clone http://git.prototyping.id/20210782/travel-app
+   cd travel-app
+   ```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Set up environment variables:**
+   - Fill in the required API keys (Firebase, Google, Unsplash, Uploadcare) in .env file
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+5. **Open the app:**
+   - Visit [http://localhost:5173](http://localhost:5173) in your browser.
+
+## App Feature
+
+### Planner
+
+#### Home Page
+On the home page, users can view a summary of their past trips. Locations visited are marked on a world map. Clicking a marker reveals a list of trips to that location; clicking a trip label navigates directly to the detailed itinerary page for that trip.
+
+<p align="center">
+    <img src="static/README/HomePage.png" alt="Home Page Screenshot">
+</p>
+
+Users can add a new trip by clicking the `Plan a new trip` button at the bottom right and filling out the trip creation form.
+
+#### Itinerary Page
+Plan your trip by requesting AI-generated recommendations for places to visit. If you have previously visited the destination, the system will ask for your preference regarding the type of recommendations (new, old, or mixed).
+
+<p align="center">
+    <img src="static/README/RecommendationPopup.png" alt="Recommendation Popup Screenshot">
+</p>
+
+After receiving recommendations, **TravelApp** helps you organize them by dividing the places into your trip days, optimizing for travel time and location using OpenAI's itinerary division.
+
+#### My Trips Page
+View all your ongoing and past trips in one place.
+<p align="center">
+    <img src="static/README/MyTrips.png" alt="My Trips Screenshot">
+</p>
+
+### Memory
+
+The Memory section allows you to add and view memories for each trip. You can upload photos, create color mood boards, and revisit the vibes of your journeys. The app uses Unsplash to fetch beautiful location-based images and Uploadcare for photo uploads.
+
+## App Features
+
+- Smart suggestions for places to visit based on your travel history
+- AI-powered itinerary generation, dividing recommended places into daily plans
+- Add and manage memories for each trip, including photo uploads and color mood boards
+- Visualize your travel history on an interactive world map, with clickable markers and trip summaries
+- Seamless integration of past experiences into future travel planning
+
+## Code Organization
+
+### Tech Stack
+- **Frontend:** SvelteKit
+- **Database:** Firebase Realtime Database
+- **Hosting:** Vercel
+- **Libraries:**
+  - D3.js for the map in `WorldMap.svelte`
+- **APIs Used:**
+  - Google Places API for autocomplete
+  - Google Maps API for map visualizations
+  - [OpenAI API](https://openai.com/index/openai-api/) (GPT-4.1 mini) for place recommendations and itinerary division
+  - [Uploadcare](https://uploadcare.com) for uploading and converting photos to URLs
+  - [Unsplash API](https://unsplash.com/developers) for fetching location-based photos
+
+### Component & File Structure
 ```
-git clone http://git.prototyping.id/20210782/travel-app.git
+.
+├── README.md                  # Project documentation
+├── package.json               # Project dependencies and scripts
+├── src
+│   ├── app.css                # Global styles
+│   ├── firebase.js            # Firebase configuration
+│   ├── lib
+│   │   ├── components         # Svelte UI components
+│   │   │   ├── AddPlaces.svelte      # Place autocomplete and selection
+│   │   │   ├── Button.svelte         # Reusable button component
+│   │   │   ├── MemoryPopup.svelte    # Popup for adding/viewing memories
+│   │   │   ├── WorldMap.svelte       # Interactive world map visualization
+│   │   │   └── ...                   # Other UI components
+│   │   └── constants
+│   │       ├── Colors.ts             # Color palette and theme
+│   │       ├── CountryMappings.ts    # Country code mappings
+│   │       └── Interfaces.ts         # Shared TypeScript interfaces
+│   ├── routes
+│   │   ├── itinerary/[tid]           # Itinerary page for a specific trip
+│   │   ├── memories                  # Memory-related pages
+│   │   ├── mymemory                  # User's personal memory pages
+│   │   ├── trips                     # List and management of trips
+│   │   ├── viewimage/[tripId]/[memoryId] # View a specific memory image
+│   │   └── +page.svelte              # Home page route
+│   └── services
+│       ├── openai.ts                 # OpenAI API integration and prompts
+│       └── unsplash.ts               # Unsplash API integration
+├── static                            # Photos used in the project
+├── svelte.config.js
+├── tsconfig.json
+└── vite.config.ts
 ```
 
-Then, you need to download the project dependencies by typing this command:
-```
-npm install
-```
-## Developing
+## Design Patterns
 
-Once you've created a project and installed dependencies, start a development server:
+### MVC (Model-View-Controller)
+The app loosely follows the MVC pattern:
+- **Model:** Data is managed in Firebase and accessed via service modules.
+- **View:** Svelte components render the UI and respond to user interaction.
+- **Controller:** Logic in Svelte scripts and service files acts as the controller, handling user actions and data flow.
 
-```bash
-npm run dev
-```
+### Observer Pattern
+The observer pattern is used for real-time data updates:
+- **Subject:** Firebase Realtime Database nodes (e.g., trips, memories)
+- **Observer:** Svelte components subscribe to changes using Firebase's `onValue` method, automatically updating the UI when data changes.
 
-## Building
+### Singleton Pattern
+- The Firebase app instance is implemented as a singleton in `firebase.js`, ensuring only one instance is used throughout the app.
 
-To create a production version of your app:
+### Service Pattern
+- API integrations (OpenAI, Unsplash, Uploadcare) are abstracted into service modules, promoting code reuse and separation of concerns.
 
-```bash
-npm run build
-```
+## Limitations
 
-You can preview the production build with `npm run preview`.
+- **Image API Limitation:** Unsplash's free API restricts requests to 50 images per hour, which may affect the user experience when generating mood boards or searching for location-based images.
+- **Map Interactions:** Currently, markers on the map in the itinerary page are not clickable or interactive, limiting direct navigation from the map to trip details.
+- **Memory Photo Limit:** Adding a large number of photos to a trip can result in slow page rendering and decreased performance.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Acknowledgement
