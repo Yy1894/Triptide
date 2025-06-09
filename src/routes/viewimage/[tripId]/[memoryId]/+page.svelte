@@ -2,25 +2,74 @@
   import '../../../../app.css';
   import Nav from '$lib/components/Nav.svelte';
   import Button from '$lib/components/Button.svelte';
-  import { page } from '$app/state';
-  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { ref, get } from 'firebase/database';
   import { db } from '../../../../firebase';
 
-  let memoryId = '';
-  let tripOptions = [];
+  let tripId, memoryId;
   let memory = null;
-  let tripId = '';
+  let tripOptions = [];
   let currentImageIndex = 0;
   let gradientLayers = [];
   let columnGroups = [];
   let rotationAngle = 0;
 
-  $: tripId = page.params.tripId;
-  $: memoryId = page.params.memoryId;
+  $: tripId = $page.params.tripId;
+  $: memoryId = $page.params.memoryId;
   $: currentImage = memory?.images?.[currentImageIndex];
 
-  //make gradient-wheel rotate with currwnt image
+  $: if (tripId && memoryId) {
+    loadMemoryAndTrip(tripId, memoryId);
+  }
+
+  async function loadMemoryAndTrip(tripId, memoryId) {
+    try {
+      const memorySnap = await get(ref(db, `trips/${tripId}/memories/${memoryId}`));
+      const tripSnap = await get(ref(db, `trips/${tripId}`));
+
+      if (memorySnap.exists() && tripSnap.exists()) {
+        memory = memorySnap.val();
+        const currentTrip = tripSnap.val();
+        const { lat, lng } = currentTrip.destination.location;
+
+        const allTripsSnap = await get(ref(db, 'trips'));
+        if (allTripsSnap.exists()) {
+          const allTrips = Object.entries(allTripsSnap.val());
+
+          tripOptions = allTrips
+            .filter(([id, trip]) => {
+              const loc = trip.destination?.location;
+              const hasMemories = trip.memories && Object.keys(trip.memories).length > 0;
+              const sameLocation =
+                loc && Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lng - lng) < 0.0001;
+              return sameLocation && hasMemories;
+            })
+            .map(([id, trip]) => {
+              const memories = Object.entries(trip.memories);
+              const sorted = memories.sort((a, b) => new Date(a[1].startDate) - new Date(b[1].startDate));
+              const [latestMemoryId, latestMemory] = sorted[0];
+
+              return {
+                id,
+                memoryId: latestMemoryId,
+                label: `${latestMemory.startDate} - ${latestMemory.endDate}`
+              };
+            });
+        }
+
+        if (memory?.images?.length) {
+          columnGroups = await extractColumnwiseColors(memory.images);
+          currentImageIndex = 0;
+        }
+      } else {
+        console.error('Trip or memory not found');
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }
+
   $: {
     if (memory?.images?.length > 0) {
       const imageCount = memory.images.length;
@@ -30,67 +79,16 @@
       rotationAngle = 0;
     }
   }
+
   $: wheelStyle = {
-      transform: `translateY(-50%) rotate(${rotationAngle}deg)`,
-      transformOrigin: 'center center'
-    };
-
-  onMount(async () => {
-    if (tripId && memoryId) {
-      try {
-        const memorySnap = await get(ref(db, `trips/${tripId}/memories/${memoryId}`));
-        const tripSnap = await get(ref(db, `trips/${tripId}`));
-
-        if (memorySnap.exists() && tripSnap.exists()) {
-          memory = memorySnap.val();
-          const currentTrip = tripSnap.val();
-          const { lat, lng } = currentTrip.destination.location;
-
-          const allTripsSnap = await get(ref(db, 'trips'));
-          if (allTripsSnap.exists()) {
-            const allTrips = Object.entries(allTripsSnap.val());
-
-            tripOptions = allTrips
-              .filter(([id, trip]) => {
-                const loc = trip.destination?.location;
-                const hasMemories = trip.memories && Object.keys(trip.memories).length > 0;
-                const sameLocation =
-                  loc && Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lng - lng) < 0.0001;
-                return sameLocation && hasMemories;
-              })
-              .map(([id, trip]) => {
-                const memories = Object.values(trip.memories);
-                const latest = memories.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))[0];
-                return {
-                  id,
-                  label: `${latest.startDate} - ${latest.endDate}`
-                };
-              });
-
-            const currentIndex = tripOptions.findIndex(t => t.id === tripId);
-            if (currentIndex > 0) {
-              const [current] = tripOptions.splice(currentIndex, 1);
-              tripOptions.unshift(current);
-            }
-          }
-
-          if (memory?.images?.length) {
-            columnGroups = await extractColumnwiseColors(memory.images);
-          }
-        } else {
-          console.error('Trip or memory not found');
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    }
-  });
+    transform: `translateY(-50%) rotate(${rotationAngle}deg)`,
+    transformOrigin: 'center center'
+  };
 
   $: if (memory?.images?.length && columnGroups.length) {
     const angleOffset = -(360 / memory.images.length) * currentImageIndex;
     const gradients = makeConcentricGradients(columnGroups, angleOffset);
 
-    //to make donut form
     const MASK_COUNT = 3;
     for (let i = 0; i < MASK_COUNT; i++) {
       gradients.push('radial-gradient(circle, var(--black) 100%)');
@@ -109,7 +107,23 @@
     });
   }
 
-  //convert rgb to hsb
+  async function getImageData(url) {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.src = url;
+    await img.decode();
+
+    const MAX_WIDTH = 100;
+    const ratio = MAX_WIDTH / img.width;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = MAX_WIDTH;
+    canvas.height = Math.round(img.height * ratio);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+
   function rgbToHsb(r, g, b) {
     const r_ = r / 255, g_ = g / 255, b_ = b / 255;
     const max = Math.max(r_, g_, b_), min = Math.min(r_, g_, b_);
@@ -130,25 +144,6 @@
     return [h, s * 100, v * 255];
   }
 
-  async function getImageData(url) {
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.src = url;
-    await img.decode();
-
-    //to shorten rendering time
-    const MAX_WIDTH = 100;
-    const ratio = MAX_WIDTH / img.width;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = MAX_WIDTH;
-    canvas.height = Math.round(img.height * ratio);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return ctx.getImageData(0, 0, canvas.width, canvas.height);
-  }
-
-  //make column colorset from image
   function getColumnColors(imageData, columnCount = 5) {
     const { data, width, height } = imageData;
     const columnWidth = Math.floor(width / columnCount);
@@ -161,7 +156,7 @@
         const r = data[idx], g = data[idx + 1], b = data[idx + 2];
 
         const [h, s, br] = rgbToHsb(r, g, b);
-        if (br < 20 || s < 10) continue; //color correction
+        if (br < 20 || s < 10) continue;
 
         const rgb = `rgb(${r},${g},${b})`;
         columns[colIndex].push(rgb);
@@ -175,7 +170,6 @@
     });
   }
 
-  //make column color set for gradient
   async function extractColumnwiseColors(imageUrls) {
     const columnColorGroups = [[], [], [], [], []];
 
@@ -193,7 +187,7 @@
   function makeConcentricGradients(groups, rotationOffset = 0) {
     return groups.map(colors => {
       const step = 360 / colors.length;
-      const start = rotationOffset + 90 - 180/memory.images.length;
+      const start = rotationOffset + 90 - 180 / memory.images.length;
       return `conic-gradient(from ${start}deg, ${colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
     });
   }
@@ -211,6 +205,7 @@
   }
 </script>
 
+
 <main>
   <Nav activeTab="MyMemory" darkMode={true}/>
 
@@ -223,7 +218,9 @@
       <div class="trip-switcher">
         <div class="trip-switcher-inner">
           {#each tripOptions as trip}
-            <button on:click={() => goto(`/memory/${trip.id}/${memoryId}`)}>
+            <button
+              class={trip.id === tripId ? 'active' : ''}
+              on:click={() => goto(`/viewimage/${trip.id}/${trip.memoryId}`)}>
               {trip.label}
             </button>
           {/each}
@@ -327,6 +324,10 @@
 
   .trip-switcher button:hover {
     background-color: var(--gray-100);
+  }
+
+  .trip-switcher button.active {
+    background-color: var(--memory-500);
   }
 
   .wheel-container {
