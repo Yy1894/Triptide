@@ -1,55 +1,4 @@
 <script lang="ts">
-<<<<<<< HEAD
-    import '../../app.css';
-    import MemoryCard from '$lib/components/MemoryCard.svelte';
-    import Button from '$lib/components/Button.svelte';
-    import NewMemoryPopup from '$lib/components/NewMemoryPopup.svelte';
-    import Nav from '$lib/components/Nav.svelte';
-    import { onMount } from 'svelte';
-    import { ref, get } from 'firebase/database';
-    import { db } from '../../firebase';
-
-    interface Memory {
-        tripId: string;
-        memoryId: string;
-        destination: string;
-        startDate: string;
-        endDate: string;
-        image: string;
-    }
-
-    let showNewMemoryPopup = false;
-    let contentContainer: HTMLElement;
-    
-    let pastMemories: Memory[] = [];
-
-    onMount(async () => {
-        const snapshot = await get(ref(db, 'trips'));
-        const data = snapshot.val();
-
-        pastMemories = Object.entries(data).flatMap(([tripId, trip]: any) => {
-            const memories = Object.entries(trip.memories ?? {});
-            if (memories.length === 0) return [];
-
-            //latest memoryID
-            const sorted = memories.sort((a, b) => new Date(b[1].createdAt) - new Date(a[1].createdAt));
-            const [memoryId, memory] = sorted[0];
-
-            return [{
-            tripId,
-            memoryId,
-            destination: trip.destination?.name ?? 'Unknown',
-            startDate: memory.startDate,
-            endDate: memory.endDate,
-            image: memory.images?.[0] ?? ''
-            }];
-        });
-    });
-
-    function handleNewMemory() {
-        showNewMemoryPopup = true;
-    }
-=======
   import '../../app.css';
   import MemoryCard from '$lib/components/MemoryCard.svelte';
   import Button from '$lib/components/Button.svelte';
@@ -109,7 +58,6 @@
   function handleNewMemory() {
     showNewMemoryPopup = true;
   }
->>>>>>> 0570bcffe9996e925158c79503096d59ce341846
 </script>
 
 <main>
@@ -123,11 +71,7 @@
       <div class="memories-container">
             {#if pastMemories.length === 0}
                 <div class="empty-state">
-<<<<<<< HEAD
-                    <p>There is no memory</p>
-=======
                     <p>There is no memory yet</p>
->>>>>>> 0570bcffe9996e925158c79503096d59ce341846
                 </div>
             {:else}
                 <div class="memories-grid">

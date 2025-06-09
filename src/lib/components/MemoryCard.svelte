@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
+
     export let destination = '';
     export let startDate = '';
     export let endDate = '';
@@ -34,7 +35,7 @@
 
 <style>
     .memory-card {
-        background: var(--gray-900);
+        background: var(--black);
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
