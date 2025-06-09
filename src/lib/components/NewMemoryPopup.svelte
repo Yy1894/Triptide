@@ -233,6 +233,8 @@
     }
   
     let isUploading = false;
+
+    const isDark = document.documentElement.classList.contains('dark');
 </script>
   
 {#if showPopup}

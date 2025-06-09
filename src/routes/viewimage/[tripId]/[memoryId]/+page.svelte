@@ -1,38 +1,38 @@
-<script>
+<script lang="ts">
   import '../../../../app.css';
   import Nav from '$lib/components/Nav.svelte';
   import Button from '$lib/components/Button.svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { ref, get } from 'firebase/database';
   import { db } from '../../../../firebase';
 
   let tripId, memoryId;
-  let memory = null;
-  let tripOptions = [];
+  let memory: any = null;
+  let tripOptions: any[] = [];
   let currentImageIndex = 0;
-  let gradientLayers = [];
-  let columnGroups = [];
+  let gradientLayers: any[] = [];
+  let columnGroups: any[] = [];
   let rotationAngle = 0;
 
-  let droppedTripId = null;
-  let droppedMemory = null;
+  let droppedTripId: any = null;
+  let droppedMemory: any = null;
   let droppedImageIndex = 0;
-  let droppedColumnGroups = [];
-  let droppedGradientLayers = [];
+  let droppedColumnGroups: any[] = [];
+  let droppedGradientLayers: any[] = [];
   let droppedWheelStyle = {};
-  let droppedCurrentImage = null;
+  let droppedCurrentImage: any = null;
   let isDroppedVisible = true;
 
-  $: tripId = $page.params.tripId;
-  $: memoryId = $page.params.memoryId;
+  $: tripId = page.params.tripId;
+  $: memoryId = page.params.memoryId;
   $: currentImage = memory?.images?.[currentImageIndex];
 
   $: if (tripId && memoryId) {
     loadMemoryAndTrip(tripId, memoryId);
   }
 
-  async function loadMemoryAndTrip(tripId, memoryId) {
+  async function loadMemoryAndTrip(tripId: string, memoryId: string) {
     try {
       const memorySnap = await get(ref(db, `trips/${tripId}/memories/${memoryId}`));
       const tripSnap = await get(ref(db, `trips/${tripId}`));
@@ -79,8 +79,12 @@
     }
   }
 
+<<<<<<< HEAD
   //get information from other trip in same region
   async function loadDroppedTrip(tripId, memoryId) {
+=======
+  async function loadDroppedTrip(tripId: any, memoryId: any) {
+>>>>>>> 0570bcffe9996e925158c79503096d59ce341846
     const memorySnap = await get(ref(db, `trips/${tripId}/memories/${memoryId}`));
     if (memorySnap.exists()) {
       droppedTripId = tripId;
@@ -105,7 +109,7 @@
     transformOrigin: 'center center'
   };
 
-  async function getImageData(url) {
+  async function getImageData(url: string) {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.src = url;
@@ -143,8 +147,12 @@
     return [h, s * 100, v * 255];
   }
 
+<<<<<<< HEAD
   // get most frequent color from each section
   function getColumnColors(imageData, columnCount = 5) {
+=======
+  function getColumnColors(imageData: ImageData, columnCount = 5) {
+>>>>>>> 0570bcffe9996e925158c79503096d59ce341846
     const { data, width, height } = imageData;
     const columnWidth = Math.floor(width / columnCount);
     const columns = Array.from({ length: columnCount }, () => []);
@@ -170,8 +178,12 @@
     });
   }
 
+<<<<<<< HEAD
   //collect color by column
   async function extractColumnwiseColors(imageUrls, reverseColumns = true) {
+=======
+  async function extractColumnwiseColors(imageUrls: any, reverseColumns = true) {
+>>>>>>> 0570bcffe9996e925158c79503096d59ce341846
     const columnColorGroups = [[], [], [], [], []];
 
     for (const url of imageUrls) {
@@ -237,7 +249,7 @@
       gradients.push('radial-gradient(circle, var(--black) 100%)');
     }
 
-    droppedGradientLayers = gradients.map((bg, i) => {
+    droppedGradientLayers = gradients.map((bg: any, i: number) => {
       const scale = 1 - i * 0.1;
       return `background: ${bg};
               width: ${scale * 100}%;
@@ -280,7 +292,7 @@
     }
   }
 
-  function handleDrop(event) {
+  function handleDrop(event: { preventDefault: () => void; dataTransfer: { getData: (arg0: string) => any; }; }) {
     event.preventDefault();
     if (droppedMemory && isDroppedVisible) return;
 
@@ -289,7 +301,7 @@
     loadDroppedTrip(droppedTripId, droppedMemoryId);
   }
 
-  function allowDrop(event) {
+  function allowDrop(event: { preventDefault: () => void; }) {
     if (!droppedMemory || !isDroppedVisible) {
       event.preventDefault();
     }
@@ -342,20 +354,28 @@
             <img class="preview-img" src={currentImage} alt="Current Image" />
           {/if}
 
+          <!-- svelte-ignore a11y_consider_explicit_label -->
           <div class="arrow-controls">
+            <!-- svelte-ignore a11y_consider_explicit_label -->
             <button on:click={prevImage}>
-              <img src="/lucide_chevron-up.png" alt="Up" width="24" height="24" />
+              <i class="fa-solid fa-chevron-up"></i>
             </button>
             <button on:click={nextImage}>
-              <img src="/lucide_chevron-down.png" alt="Down" width="24" height="24" />
+              <i class="fa-solid fa-chevron-down"></i>
             </button>
           </div>
         </div>
 
         <!-- rightside dropped view -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="wheel-section drop-zone" on:drop={handleDrop} on:dragover={allowDrop}>
           {#if droppedMemory && isDroppedVisible}
-            <img src="/lucide_x.png" alt="Close" class="close-button" on:click={closeDroppedWheel} />
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            <!-- <img src="/lucide_x.png" alt="Close" class="close-button" on:click={closeDroppedWheel} /> -->
+            <button class="close-button" on:click={closeDroppedWheel} aria-label="Close">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
         
             <div class="dropped-mask">
               <div class="dropped-wheel" style={droppedWheelStyle}>
@@ -366,15 +386,18 @@
             </div>
         
             {#if droppedCurrentImage}
+              <!-- svelte-ignore a11y_img_redundant_alt -->
               <img class="dropped-img" src={droppedCurrentImage} alt="Dropped Image" />
             {/if}
         
             <div class="dropped-controls">
+              <!-- svelte-ignore a11y_consider_explicit_label -->
               <button on:click={prevDroppedImage}>
-                <img src="/lucide_chevron-up.png" alt="Up" width="24" height="24" />
+                <i class="fa-solid fa-chevron-up"></i>
               </button>
+              <!-- svelte-ignore a11y_consider_explicit_label -->
               <button on:click={nextDroppedImage}>
-                <img src="/lucide_chevron-down.png" alt="Down" width="24" height="24" />
+                <i class="fa-solid fa-chevron-down"></i>
               </button>
             </div>
           {/if}
@@ -400,6 +423,7 @@
     display: flex;
     flex-direction: column;
     width: 100vw;
+    font-family: 'Inter', sans-serif;
   }
 
   .header {
@@ -595,10 +619,13 @@
 
   .close-button {
     position: absolute;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: white;
     top: -48px;
     right: 2rem;
     width: 24px;
-    height: 24px;
     cursor: pointer;
     z-index: 5;
   }

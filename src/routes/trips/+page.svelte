@@ -21,13 +21,27 @@
         const tripsRef = ref(db, 'trips');
 
         // listen for changes in the trips data
-        onValue(tripsRef, (snapshot) => {
+        onValue(tripsRef, async (snapshot) => {
             const trips: Trip[] = [];
+            const tripImageMap: Record<string, string> = {};
+            const promises: Promise<void>[] = [];
             snapshot.forEach((childSnapshot) => {
-                trips.push({
+                const tripData = {
                     tid: childSnapshot.key,
                     ...childSnapshot.val()
-                });
+                };
+                trips.push(tripData);
+
+                // Check for memories and get the first image if exists
+                if (tripData.memories && typeof tripData.memories === 'object') {
+                    const memoryIds = Object.keys(tripData.memories);
+                    if (memoryIds.length > 0) {
+                        const firstMemory = tripData.memories[memoryIds[0]];
+                        if (firstMemory.images && firstMemory.images.length > 0) {
+                            tripImageMap[tripData.tid] = firstMemory.images[0];
+                        }
+                    }
+                }
             });
 
             // get today's date at midnight for comparison
@@ -35,7 +49,6 @@
             today.setHours(0, 0, 0, 0);
 
             // filter trips based on end date
-            // end date > today = pastTrips
             ongoingTrips = trips.filter(trip => {
                 const endDate = new Date(trip.endDate);
                 return endDate >= today;
@@ -45,6 +58,10 @@
                 const endDate = new Date(trip.endDate);
                 return endDate < today;
             }).sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()); // sort past trips by most recent first
+
+            // Attach the image override map to each trip for rendering
+            ongoingTrips = ongoingTrips.map(trip => ({ ...trip, _cardImage: tripImageMap[trip.tid] || trip.destination.photo }));
+            pastTrips = pastTrips.map(trip => ({ ...trip, _cardImage: tripImageMap[trip.tid] || trip.destination.photo }));
         });
     });
 
@@ -95,7 +112,7 @@
                                 destination={trip.destination.name}
                                 startDate={new Date(trip.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 endDate={new Date(trip.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                image={trip.destination.photo}
+                                image={trip._cardImage}
                                 tid={trip.tid}
                             />
                         {/each}
@@ -113,7 +130,7 @@
                                 destination={trip.destination.name}
                                 startDate={new Date(trip.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 endDate={new Date(trip.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                image={trip.destination.photo}
+                                image={trip._cardImage}
                                 tid={trip.tid}
                             />
                         {/each}

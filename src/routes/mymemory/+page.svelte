@@ -1,4 +1,5 @@
 <script lang="ts">
+<<<<<<< HEAD
     import '../../app.css';
     import MemoryCard from '$lib/components/MemoryCard.svelte';
     import Button from '$lib/components/Button.svelte';
@@ -48,6 +49,67 @@
     function handleNewMemory() {
         showNewMemoryPopup = true;
     }
+=======
+  import '../../app.css';
+  import MemoryCard from '$lib/components/MemoryCard.svelte';
+  import Button from '$lib/components/Button.svelte';
+  import NewMemoryPopup from '$lib/components/NewMemoryPopup.svelte';
+  import Nav from '$lib/components/Nav.svelte';
+  import { onMount } from 'svelte';
+  import { ref, onValue } from 'firebase/database';
+  import { db } from '../../firebase';
+
+  let showNewMemoryPopup = false;
+  let contentContainer: HTMLElement;
+
+  interface MemoryCardData {
+    tid: string;
+    memoryId: string;
+    destination: string;
+    startDate: string;
+    endDate: string;
+    image: string;
+  }
+
+  let pastMemories: MemoryCardData[] = [];
+
+  onMount(() => {
+    const tripsRef = ref(db, 'trips');
+    onValue(tripsRef, (snapshot) => {
+      const memories: MemoryCardData[] = [];
+      snapshot.forEach((childSnapshot) => {
+        const trip = childSnapshot.val();
+        const tid = childSnapshot.key;
+        if (trip.memories && typeof trip.memories === 'object') {
+          const memoryEntries = Object.entries(trip.memories);
+          if (memoryEntries.length > 0) {
+            const [memoryId, memory] = memoryEntries[0];
+            const mem = memory as { images: string[] };
+            if (mem.images && mem.images.length > 0) {
+              const format = (d: string) => {
+                const date = new Date(d);
+                return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+              };
+              memories.push({
+                tid,
+                memoryId,
+                destination: trip.destination?.name || '',
+                startDate: format(trip.startDate),
+                endDate: format(trip.endDate),
+                image: mem.images[0]
+              });
+            }
+          }
+        }
+      });
+      pastMemories = memories;
+    });
+  });
+
+  function handleNewMemory() {
+    showNewMemoryPopup = true;
+  }
+>>>>>>> 0570bcffe9996e925158c79503096d59ce341846
 </script>
 
 <main>
@@ -61,7 +123,11 @@
       <div class="memories-container">
             {#if pastMemories.length === 0}
                 <div class="empty-state">
+<<<<<<< HEAD
                     <p>There is no memory</p>
+=======
+                    <p>There is no memory yet</p>
+>>>>>>> 0570bcffe9996e925158c79503096d59ce341846
                 </div>
             {:else}
                 <div class="memories-grid">

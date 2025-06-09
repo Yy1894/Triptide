@@ -10,6 +10,7 @@ export interface Trip {
             lng: number;
         }
     };
+    _cardImage?: string;
     startDate: string;
     endDate: string;
     tripmates: string[];
