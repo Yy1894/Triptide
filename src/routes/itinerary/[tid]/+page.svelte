@@ -22,6 +22,7 @@
     import RecommendationPopup from '$lib/components/RecommendationPopup.svelte';
     import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
     import TurnIntoItineraryPopup from '$lib/components/TurnIntoItineraryPopup.svelte';
+    import { fetchUnsplashPhoto } from '../../../services/unsplash';
     import type { Place } from '$lib/constants/Interfaces';
 
     let tripData: any = null;
@@ -288,12 +289,6 @@
         itinerary: true
     };
 
-    let recommendedPlaces = [
-        { name: "Place name" },
-        { name: "Place name" },
-        { name: "Place name" }
-    ];
-
     let placesToVisit: any[] = [];
 
     async function handleDeletePlace(index: number) {
@@ -419,12 +414,13 @@
 
                     if (results.length > 0) {
                         const place = results[0];
-                        const photoUrl = place.photos?.[0]?.getUrl();
-                        
+                        // Use Unsplash for the photo
+                        const unsplashUrl = await fetchUnsplashPhoto(place.name || rec.name);
+
                         const newPlace = {
                             name: place.name || rec.name,
                             desc: place.formatted_address || '',
-                            image: photoUrl || '/placeholder.jpeg',
+                            image: unsplashUrl || '/placeholder.jpeg',
                             geometry: place.geometry?.location ? {
                                 lat: place.geometry.location.lat(),
                                 lng: place.geometry.location.lng()
