@@ -15,6 +15,14 @@
   let columnGroups = [];
   let rotationAngle = 0;
 
+  let droppedTripId = null;
+  let droppedMemory = null;
+  let droppedImageIndex = 0;
+  let droppedColumnGroups = [];
+  let droppedGradientLayers = [];
+  let droppedWheelStyle = {};
+  let droppedCurrentImage = null;
+
   $: tripId = $page.params.tripId;
   $: memoryId = $page.params.memoryId;
   $: currentImage = memory?.images?.[currentImageIndex];
@@ -70,10 +78,19 @@
     }
   }
 
+  async function loadDroppedTrip(tripId, memoryId) {
+    const memorySnap = await get(ref(db, `trips/${tripId}/memories/${memoryId}`));
+    if (memorySnap.exists()) {
+      droppedTripId = tripId;
+      droppedMemory = memorySnap.val();
+      droppedColumnGroups = await extractColumnwiseColors(droppedMemory.images);
+      droppedImageIndex = 0;
+    }
+  }
+
   $: {
     if (memory?.images?.length > 0) {
-      const imageCount = memory.images.length;
-      const sliceAngle = 360 / imageCount;
+      const sliceAngle = 360 / memory.images.length;
       rotationAngle = sliceAngle * currentImageIndex - 90;
     } else {
       rotationAngle = 0;
@@ -192,6 +209,34 @@
     });
   }
 
+  $: if (droppedMemory?.images?.length && droppedColumnGroups.length) {
+    const angleOffset = -(360 / droppedMemory.images.length) * droppedImageIndex;
+    const gradients = makeConcentricGradients(droppedColumnGroups, angleOffset);
+
+    const MASK_COUNT = 3;
+    for (let i = 0; i < MASK_COUNT; i++) {
+      gradients.push('radial-gradient(circle, var(--black) 100%)');
+    }
+
+    droppedGradientLayers = gradients.map((bg, i) => {
+      const scale = 1 - i * 0.1;
+      return `background: ${bg};
+              width: ${scale * 100}%;
+              height: ${scale * 100}%;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              border-radius: 50%;`;
+    });
+
+    droppedWheelStyle = {
+      transform: `translateY(-50%) rotate(${-90 + (360 / droppedMemory.images.length) * droppedImageIndex}deg)`
+    };
+
+    droppedCurrentImage = droppedMemory.images[droppedImageIndex];
+  }
+
   function nextImage() {
     if (memory?.images?.length > 0) {
       currentImageIndex = (currentImageIndex + 1) % memory.images.length;
@@ -202,6 +247,29 @@
     if (memory?.images?.length > 0) {
       currentImageIndex = (currentImageIndex - 1 + memory.images.length) % memory.images.length;
     }
+  }
+
+  function nextDroppedImage() {
+    if (droppedMemory?.images?.length > 0) {
+      droppedImageIndex = (droppedImageIndex + 1) % droppedMemory.images.length;
+    }
+  }
+
+  function prevDroppedImage() {
+    if (droppedMemory?.images?.length > 0) {
+      droppedImageIndex = (droppedImageIndex - 1 + droppedMemory.images.length) % droppedMemory.images.length;
+    }
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    const droppedTripId = event.dataTransfer.getData("tripId");
+    const droppedMemoryId = event.dataTransfer.getData("memoryId");
+    loadDroppedTrip(droppedTripId, droppedMemoryId);
+  }
+
+  function allowDrop(event) {
+    event.preventDefault();
   }
 </script>
 
@@ -220,6 +288,11 @@
           {#each tripOptions as trip}
             <button
               class={trip.id === tripId ? 'active' : ''}
+              draggable="true"
+              on:dragstart={(e) => {
+                e.dataTransfer.setData('tripId', trip.id);
+                e.dataTransfer.setData('memoryId', trip.memoryId);
+              }}
               on:click={() => goto(`/viewimage/${trip.id}/${trip.memoryId}`)}>
               {trip.label}
             </button>
@@ -227,22 +300,45 @@
         </div>
       </div>
 
-      <div class="wheel-container">
-        <div class="wheel-mask">
-          <div class="gradient-wheel" style={wheelStyle}>
-            {#each gradientLayers as style}
-              <div class="layer" style={style}></div>
-            {/each}
+      <div class="wheel-compare-wrapper">
+        <!-- leftside original wheel -->
+        <div class="wheel-section">
+          <div class="wheel-mask">
+            <div class="gradient-wheel" style={wheelStyle}>
+              {#each gradientLayers as style}
+                <div class="layer" style={style}></div>
+              {/each}
+            </div>
+          </div>
+
+          {#if currentImage}
+            <img class="preview-img" src={currentImage} alt="Current Image" />
+          {/if}
+
+          <div class="arrow-controls">
+            <button on:click={prevImage}>▲</button>
+            <button on:click={nextImage}>▼</button>
           </div>
         </div>
 
-        {#if currentImage}
-          <img class="preview-img" src={currentImage} alt="Current Image" />
-        {/if}
-
-        <div class="arrow-controls">
-          <button on:click={prevImage}>▲</button>
-          <button on:click={nextImage}>▼</button>
+        <!-- rightside dropped view -->
+        <div class="wheel-section drop-zone" on:drop={handleDrop} on:dragover={allowDrop}>
+          {#if droppedMemory}
+            <div class="dropped-mask">
+              <div class="dropped-wheel" style={droppedWheelStyle}>
+                {#each droppedGradientLayers as style}
+                  <div class="layer" style={style}></div>
+                {/each}
+              </div>
+            </div>
+            {#if droppedCurrentImage}
+              <img class="dropped-img" src={droppedCurrentImage} alt="Dropped Image" />
+            {/if}
+            <div class="dropped-controls">
+              <button on:click={prevDroppedImage}>▲</button>
+              <button on:click={nextDroppedImage}>▼</button>
+            </div>
+          {/if}
         </div>
       </div>
     {/if}
@@ -252,6 +348,7 @@
 <style>
   main {
     height: 100vh;
+    width: 100vw;
     background-color: var(--black);
     font-family: 'Inter', sans-serif;
     display: flex;
@@ -259,16 +356,16 @@
   }
 
   .content {
-    flex: 1;
-    padding: 0 1rem 2rem 1rem;
+    padding: 0;
     position: relative;
     display: flex;
     flex-direction: column;
+    width: 100vw;
   }
 
   .header {
     padding-top: 2rem;
-    padding-left: 1rem;
+    padding-left: 2rem;
     background-color: var(--black);
     color: var(--white);
   }
@@ -282,8 +379,8 @@
   .trip-switcher {
     width: 100%;
     text-align: center;
-    overflow: hidden;
     padding-top: 1.5rem;
+    padding-left: 2rem;
   }
 
   .trip-switcher-inner {
@@ -342,29 +439,36 @@
     transition: transform 0.2s ease;
   }
 
-  .wheel-container {
+  .wheel-compare-wrapper {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    width: 100%;
+    height: 100%;
+  }
+
+  .wheel-section {
     display: flex;
     align-items: center;
-    gap: 20px;
-    margin-top: 2rem;
-    height: 40vw;
+    gap: 32px;
+    width: 50%;
     position: relative;
   }
 
   .wheel-mask {
-    width: 50vw;
-    height: 100%;
+    display: flex;
+    width: 20vw;
+    height: 35vw;
     overflow: hidden;
     position: relative;
+    align-items: center;
   }
 
   .gradient-wheel {
     position: absolute;
     width: 35vw;
     height: 35vw;
-    left: -17.5vw;
-    top: 50%;
-    transform: translateY(-50%);
+    left: -15vw;
     border-radius: 50%;
   }
 
@@ -377,10 +481,7 @@
   }
 
   .preview-img {
-    position: absolute;
-    top: 50%;
-    left: calc(17.5vw + 180px);
-    transform: translate(-50%, -50%);
+    position: relative;
     width: 300px;
     height: 200px;
     object-fit: cover;
@@ -391,10 +492,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    position: absolute;
-    top: 50%;
-    left: calc(17.5vw + 340px);
-    transform: translateY(-50%);
+    position: relative;
     z-index: 4;
   }
 
@@ -404,6 +502,56 @@
     font-size: 1.5rem;
     color: white;
     cursor: pointer;
+  }
+
+  .wheel-section.drop-zone {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 32px;
+    width: 50%;
+    position: relative;
+  }
+
+  .dropped-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 4;
+  }
+
+  .dropped-controls button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: white;
+    cursor: pointer;
+  }
+
+  .dropped-img {
+    position: relative;
+    width: 300px;
+    height: 200px;
+    object-fit: cover;
+    z-index: 3;
+  }
+
+  .dropped-mask {
+    display: flex;
+    width: 20vw;
+    height: 35vw;
+    overflow: hidden;
+    position: relative;
+    align-items: center;
+  }
+
+  .dropped-wheel {
+    position: absolute;
+    width: 35vw;
+    height: 35vw;
+    right: -15vw;
+    border-radius: 50%;
   }
 </style>
 
