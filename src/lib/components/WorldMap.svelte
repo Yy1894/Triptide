@@ -6,10 +6,12 @@
   import '../../app.css';
   import { ref, get } from 'firebase/database';
   import { db } from '../../firebase';
+  import { goto } from '$app/navigation';
 
   let mapContainer: HTMLDivElement;
 
   interface TripLocation {
+    tid: string;
     name: string;
     location: {
       lat: number;
@@ -17,6 +19,7 @@
     };
     startDate: string;
     endDate: string;
+    hasMemory: boolean;
   }
 
   function formatDate(dateStr: string): string {
@@ -37,16 +40,19 @@
 
       const locationMap: Record<string, TripLocation[]> = {};
 
-      Object.values(snapshot.val()).forEach((trip: any) => {
+      Object.entries(snapshot.val()).forEach(([tid, trip]: [string, any]) => {
         const endDate = new Date(trip.endDate);
         if (endDate < today && trip.destination?.location) {
           const key = `${trip.destination.location.lat},${trip.destination.location.lng}`;
           if (!locationMap[key]) locationMap[key] = [];
+          const hasMemory = trip.memories && Object.keys(trip.memories).length > 0;
           locationMap[key].push({
+            tid,
             name: trip.destination.name,
             location: trip.destination.location,
             startDate: trip.startDate,
-            endDate: trip.endDate
+            endDate: trip.endDate,
+            hasMemory
           });
         }
       });
@@ -167,14 +173,23 @@
                   .attr('cy', baseY - offsetY)
                   .attr('r', 5)
                   .attr('fill', Colors.planner.med400)
-                  .attr('class', 'trip-marker');
+                  .attr('class', 'trip-marker')
+                  .attr('data-has-memory', trip.hasMemory ? 'true' : 'false')
+                  .style('cursor', 'pointer')
+                  .on('click', function () {
+                    goto(`/itinerary/${trip.tid}`);
+                  });
 
                 markerGroup.append('text')
                   .attr('x', baseX + 10)
                   .attr('y', baseY - offsetY + 4)
                   .attr('font-size', '12px')
                   .attr('class', 'trip-label')
-                  .text(`${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}`);
+                  .text(`${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}`)
+                  .style('cursor', 'pointer')
+                  .on('click', function () {
+                    goto(`/itinerary/${trip.tid}`);
+                  });
 
                 markerGroup
                   .style('opacity', 0)
@@ -271,8 +286,12 @@
     fill: var(--memory-500);
   }
 
-  :global(.dark .trip-marker) {
+  :global(.dark .trip-marker[data-has-memory="true"]) {
     fill: var(--memory-500);
+  }
+
+  :global(.dark .trip-marker[data-has-memory="false"]) {
+    fill: var(--planner-400);
   }
 
   :global(.dark .trip-line) {

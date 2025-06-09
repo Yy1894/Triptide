@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { Loader } from '@googlemaps/js-api-loader';
+    import { fetchUnsplashPhoto } from '../../services/unsplash';
 
     // Extend the PlaceResult type to include our custom photoUrl
     interface ExtendedPlaceResult extends google.maps.places.PlaceResult {
@@ -58,25 +59,12 @@
             const autocomplete = new google.maps.places.Autocomplete(input, autocompleteOptions);
             autocomplete.setFields(['name', 'formatted_address', 'photos', 'place_id', 'geometry']);
 
-            autocomplete.addListener('place_changed', () => {
+            autocomplete.addListener('place_changed', async () => {
                 const place = autocomplete.getPlace() as ExtendedPlaceResult;
                 if (place && place.name) {
-                    // If the place has photos, get the URL for the first photo
-                    if (place.photos && place.photos.length > 0) {
-                        try {
-                            const photoOptions = {
-                                maxWidth: 400,
-                                maxHeight: 300
-                            };
-                            place.photoUrl = place.photos[0].getUrl(photoOptions);
-                        } catch (error) {
-                            console.error('Error getting photo URL:', error);
-                            place.photoUrl = '/placeholder.jpeg';
-                        }
-                    }
-                    else {
-                        place.photoUrl = '/placeholder.jpeg';
-                    }
+                    // Use Unsplash for the photo
+                    const unsplashUrl = await fetchUnsplashPhoto(place.name);
+                    place.photoUrl = unsplashUrl || '/placeholder.jpeg';
                     
                     selectedPlace = place;
                     lastSelectedPlaceName = input.value.trim();
