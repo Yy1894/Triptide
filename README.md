@@ -1,4 +1,4 @@
-# Travel App
+# Triptide
 
 ## Student Information
 
@@ -10,12 +10,12 @@ Name: Chaebean Yang
 Student ID: 20230412
 Email: kazed0102@kaist.ac.kr
 
-Git Repository: [Travel App](http://git.prototyping.id/20210782/travel-app)
+Git Repository: [Triptide](http://git.prototyping.id/20210782/travel-app)
 
 Demo Video:
 
 ## Table of Contents
-- [Travel App](#travel-app)
+- [Triptide](#triptide)
   - [Student Information](#student-information)
   - [Table of Contents](#table-of-contents)
   - [App Description](#app-description)
@@ -26,6 +26,9 @@ Demo Video:
       - [Itinerary Page](#itinerary-page)
       - [My Trips Page](#my-trips-page)
     - [Memory](#memory)
+      - [Home](#home)
+      - [View photos by location Page](#view-photos-by-location-page)
+      - [My Memories Page](#my-memories-page)
   - [App Features](#app-features)
   - [Code Organization](#code-organization)
     - [Tech Stack](#tech-stack)
