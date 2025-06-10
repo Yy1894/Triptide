@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://triptide.netlify.app">
-      <img src="static/README/header.png" alt="Home Page Screenshot">
+      <img src="static/README/header-center.png" alt="Home Page Screenshot">
     </a>
 </p>
 <p align="center">
@@ -23,9 +23,9 @@ Name: Chaebean Yang
 Student ID: 20230412  
 Email: kazed0102@kaist.ac.kr
 
-Git Repository: [Triptide](http://git.prototyping.id/20210782/travel-app)  
+Git Repository: [Triptide Repository](http://git.prototyping.id/20210782/travel-app)  
 Live Demo: [Triptide](https://triptide.netlify.app)  
-Demo Video:
+Demo Video: [Triptide Demo Video](https://youtu.be/l9IxPiXSwII)
 
 # Table of Contents
 - [Student Information](#student-information)
@@ -205,13 +205,12 @@ Browse a gallery of all your past trips, each represented by a photo deck.
 ## Design Patterns
 
 ### MVC (Model-View-Controller)
-The app loosely follows the MVC pattern:
 - **Model:** Data is managed in Firebase and accessed via service modules.
 - **View:** Svelte components render the UI and respond to user interaction.
 - **Controller:** Logic in Svelte scripts and service files acts as the controller, handling user actions and data flow.
 
 ### Observer Pattern
-The observer pattern is used for real-time data updates:
+The observer pattern is used for real-time data updates
 - **Subject:** Firebase Realtime Database nodes (e.g., trips, memories)
 - **Observer:** Svelte components subscribe to changes using Firebase's `onValue` method, automatically updating the UI when data changes.
 
