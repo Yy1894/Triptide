@@ -368,6 +368,7 @@
                 {#each droppedGradientLayers as style}
                   <div class="layer" style={style}></div>
                 {/each}
+                <div class="wheel-mask-center"></div>
               </div>
             </div>
         
