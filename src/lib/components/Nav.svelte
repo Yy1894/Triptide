@@ -43,8 +43,10 @@
 
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <nav class:dark-mode={darkMode}>
-    <div class="logo">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="logo" onclick={() => handleNavigation("Planner")}>
         <img src="/logo.png" alt="Logo" class="logo-img" />
         {title}
     </div>
@@ -95,6 +97,10 @@
         gap: 0.5rem;
         font-weight: bold;
         font-size: 1.5rem;
+    }
+
+    .logo:hover {
+        cursor: pointer;
     }
 
     .logo-img {

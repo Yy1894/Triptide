@@ -1,14 +1,8 @@
 <script lang="ts">
     import { fade } from 'svelte/transition';
+    import type { Place } from '$lib/constants/Interfaces';
 
-    type Place = {
-        name: string;
-        desc?: string;
-        image: string;
-        time?: string;
-    };
-
-    const defaultPlace: Omit<Place, 'desc'> = {
+    const defaultPlace: Place = {
         name: 'PlaceName',
         image: '/placeholder.jpeg',
         time: 'Add Time'

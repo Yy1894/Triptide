@@ -3,22 +3,12 @@
   import AddPlaces from "./AddPlaces.svelte";
   import { slide } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
+  import type { Place } from "$lib/constants/Interfaces";
 
   export let date;
   export let isExpanded = true;
   export let countryCode = 'tw'; // Default to Taiwan if not provided
   
-  interface Place {
-    name: string;
-    desc?: string;
-    image?: string;
-    time?: string;
-    geometry?: {
-      lat: number;
-      lng: number;
-    };
-  }
-
   export let places: Place[] = [];
   export let onPlacesUpdate: (places: Place[]) => void;
 

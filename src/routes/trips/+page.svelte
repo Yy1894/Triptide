@@ -90,7 +90,7 @@
             <button 
                 class:active={activeTab === "Ongoing Trips"} 
                 onclick={() => handleTabChange("Ongoing Trips")}>
-                Ongoing Trips
+                Upcoming Trips
             </button>
             <button 
                 class:active={activeTab === "Past Trips"} 
