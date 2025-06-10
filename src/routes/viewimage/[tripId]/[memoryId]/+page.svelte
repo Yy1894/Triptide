@@ -332,6 +332,7 @@
               {#each gradientLayers as style}
                 <div class="layer" style={style}></div>
               {/each}
+              <div class="wheel-mask-center"></div>
             </div>
           </div>
 
@@ -613,6 +614,19 @@
     width: 24px;
     cursor: pointer;
     z-index: 5;
+  }
+
+  .wheel-mask-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50%;
+    height: 50%;
+    background: var(--black);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
   }
 </style>
 

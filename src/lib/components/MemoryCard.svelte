@@ -38,7 +38,7 @@
         background: var(--black);
         border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 4px rgba(200, 200, 200, 0.2);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         cursor: pointer;
         font-family: 'Inter', sans-serif;
@@ -46,7 +46,7 @@
     }
     .memory-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 8px rgba(200, 200, 200, 0.2);
     }
     .image {
         height: 160px;
