@@ -10,12 +10,18 @@
     export let endDate = '';
     export let image = '';
     export let tid = '';
+    export let memoryId: string = '';
+    export let variant: 'trip' | 'memory' = 'trip';
 
     let showDelete = false;
     let showDeleteConfirmation = false;
 
     function handleClick() {
-        goto(`/itinerary/${tid}`);
+        if (variant === 'memory') {
+            goto(`/viewimage/${tid}/${memoryId}`);
+        } else {
+            goto(`/itinerary/${tid}`);
+        }
     }
 
     function handleMouseEnter() {
@@ -41,6 +47,16 @@
         }
     }
 
+    async function handleConfirmDeleteMemory() {
+        try {
+            const memoryRef = ref(db, `trips/${tid}/memories/${memoryId}`);
+            await remove(memoryRef);
+            showDeleteConfirmation = false;
+        } catch (error) {
+            console.error('Error deleting memory:', error);
+        }
+    }
+
     function handleCancelDelete() {
         showDeleteConfirmation = false;
     }
@@ -48,7 +64,8 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div 
-    class="trip-card" 
+    class:trip-card={variant === 'trip'}
+    class:memory-card={variant === 'memory'}
     role="button" 
     tabindex="0" 
     onmouseenter={handleMouseEnter}
@@ -74,17 +91,21 @@
         {/if}
     </div>
     <div class="info">
-        <h3>{destination}</h3>
-        <p class="date">{startDate} - {endDate}</p>
+        <h3 class:dark={variant === 'memory'}>{destination}</h3>
+        <p class="date" class:dark={variant === 'memory'}>{startDate} - {endDate}</p>
     </div>
 </div>
 
-<DeleteConfirmationPopup
-    showPopup={showDeleteConfirmation}
-    {destination}
-    onConfirm={handleConfirmDelete}
-    onCancel={handleCancelDelete}
-/>
+{#if showDeleteConfirmation}
+    <DeleteConfirmationPopup
+        showPopup={showDeleteConfirmation}
+        destination={variant === 'trip' ? destination : destination}
+        mode={variant === 'trip' ? 'Trip to' : 'Memory in'}
+        onConfirm={variant === 'trip' ? handleConfirmDelete : handleConfirmDeleteMemory}
+        onCancel={handleCancelDelete}
+        darkMode={variant === 'memory'}
+    />
+{/if}
 
 <style>
     .trip-card {
@@ -97,12 +118,24 @@
         font-family: 'Inter', sans-serif;
         position: relative;
     }
-
     .trip-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
-
+    .memory-card {
+        background: var(--black);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(200, 200, 200, 0.2);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        position: relative;
+    }
+    .memory-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(200, 200, 200, 0.2);
+    }
     .image {
         height: 160px;
         background-size: cover;
@@ -110,7 +143,6 @@
         background-color: var(--gray-100);
         position: relative;
     }
-
     .placeholder {
         height: 100%;
         display: flex;
@@ -118,23 +150,26 @@
         justify-content: center;
         font-size: 2rem;
     }
-
     .info {
         padding: 1rem;
     }
-
     .info h3 {
         margin: 0;
         font-size: 1.2rem;
         font-weight: 600;
+        color: var(--gray-900);
     }
-
+    .info h3.dark {
+        color: var(--white);
+    }
     .date {
         margin: 0.25rem 0 0 0;
         font-size: 0.8rem;
         color: var(--gray-400);
     }
-
+    .date.dark {
+        color: var(--gray-200);
+    }
     .delete-btn {
         position: absolute;
         top: 0.75rem;
@@ -151,7 +186,6 @@
         color: var(--gray-600);
         transition: all 0.2s ease;
     }
-
     .delete-btn:hover {
         background-color: var(--memory-50);
         color: var(--memory-600);

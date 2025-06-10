@@ -1,6 +1,6 @@
 <script lang="ts">
   import '../../app.css';
-  import MemoryCard from '$lib/components/MemoryCard.svelte';
+  import TripCard from '$lib/components/TripCard.svelte';
   import Button from '$lib/components/Button.svelte';
   import NewMemoryPopup from '$lib/components/NewMemoryPopup.svelte';
   import Nav from '$lib/components/Nav.svelte';
@@ -76,7 +76,7 @@
             {:else}
                 <div class="memories-grid">
                     {#each pastMemories as memory}
-                        <MemoryCard {...memory} on:deleted={(e) => handleDeletedMemory(e.detail.memoryId)} />
+                        <TripCard {...memory} variant="memory" memoryId={memory.memoryId} />
                     {/each}
                 </div>
             {/if}

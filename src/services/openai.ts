@@ -64,7 +64,6 @@ Example format:
 }
 `;
 
-    console.log(`prompt: ${prompt}`);
     try {
         const response = await openai.chat.completions.create({
             model: 'gpt-4.1-mini',
@@ -82,14 +81,10 @@ Example format:
             response_format: { type: "json_object" }
         });
 
-        console.log(response);
-
         const content = response.choices[0]?.message?.content;
         if (!content) {
             throw new Error('No recommendations received');
         }
-
-        console.log(`content: ${content}`);
 
         const parsedContent = JSON.parse(content);
         return parsedContent.recommendations || [];
@@ -128,7 +123,6 @@ Please distribute these places into a daily itinerary following these rules:
    - Each place should be assigned to exactly one day
 
 The response should be ONLY the JSON object, nothing else.`;
-    console.log(`prompt: ${prompt}`);
 
     try {
         const response = await openai.chat.completions.create({

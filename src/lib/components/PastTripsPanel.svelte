@@ -80,7 +80,7 @@
                                 destination={trip.destination.name}
                                 startDate={new Date(trip.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 endDate={new Date(trip.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                image={trip.destination.photo}
+                                image={trip._cardImage}
                                 tid={trip.tid}
                             />
                         {/each}

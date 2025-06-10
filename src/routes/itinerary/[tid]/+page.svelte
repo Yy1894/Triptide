@@ -74,10 +74,24 @@
 
             // Filter past trips for this destination
             pastTripsData = Object.entries(snapshot.val())
-                .map(([tripId, data]) => ({
-                    tid: tripId,
-                    ...data as any
-                }))
+                .map(([tripId, data]: [string, any]) => {
+                    // Find first memory image if exists
+                    let cardImage = data.destination?.photo;
+                    if (data.memories && typeof data.memories === 'object') {
+                        const memoryIds = Object.keys(data.memories);
+                        if (memoryIds.length > 0) {
+                            const firstMemory = data.memories[memoryIds[0]];
+                            if (firstMemory.images && firstMemory.images.length > 0) {
+                                cardImage = firstMemory.images[0];
+                            }
+                        }
+                    }
+                    return {
+                        tid: tripId,
+                        ...data,
+                        _cardImage: cardImage
+                    };
+                })
                 .filter(trip => {
                     const endDate = new Date(trip.endDate);
                     return trip.tid !== tid && // not current trip

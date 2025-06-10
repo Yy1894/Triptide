@@ -1,6 +1,7 @@
 <script lang="ts">
     export let showPopup = false;
     export let destination = '';
+    export let mode = 'Trip to';
     export let onConfirm: () => void;
     export let onCancel: () => void;
     export let darkMode = false;
@@ -15,7 +16,7 @@
     <div class="overlay" role="button" tabindex="0">
         <div class="popup" class:dark-mode={darkMode} role="button" tabindex="0" onclick={handlePopupClick}>
             <h2>Delete Trip</h2>
-            <p>Are you sure you want to delete Trip to {destination}?</p>
+            <p>Are you sure you want to delete {mode} {destination}?</p>
             <div class="button-group">
                 <button class="cancel-btn" onclick={onCancel}>Cancel</button>
                 <button class="delete-btn" onclick={onConfirm}>Yes, delete</button>
@@ -95,7 +96,7 @@
         color: var(--white);
     }
 
-    .popup.darkdark-mode h2 {
+    .popup.dark-mode h2 {
         color: var(--memory-400);
     }
 
