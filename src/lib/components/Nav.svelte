@@ -16,7 +16,7 @@
         return () => document.removeEventListener('click', handleClickOutside);
     });
 
-    let title = "Travel App";
+    let title = "Triptide";
     export let activeTab = "Planner";
     export let darkMode = false;
 
@@ -44,7 +44,10 @@
 </script>
 
 <nav class:dark-mode={darkMode}>
-    <div class="logo">{title}</div>
+    <div class="logo">
+        <img src="/logo.png" alt="Logo" class="logo-img" />
+        {title}
+    </div>
     <div class="right-nav">
         <div class="menu">
             <button 
@@ -87,8 +90,17 @@
     }
 
     .logo {
-        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         font-weight: bold;
+        font-size: 1.5rem;
+    }
+
+    .logo-img {
+        width: autopx;
+        height: 32px;
+        object-fit: contain;
     }
 
     .right-nav {

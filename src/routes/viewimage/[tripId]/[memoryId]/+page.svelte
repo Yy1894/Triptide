@@ -79,12 +79,7 @@
     }
   }
 
-<<<<<<< HEAD
-  //get information from other trip in same region
-  async function loadDroppedTrip(tripId, memoryId) {
-=======
   async function loadDroppedTrip(tripId: any, memoryId: any) {
->>>>>>> 0570bcffe9996e925158c79503096d59ce341846
     const memorySnap = await get(ref(db, `trips/${tripId}/memories/${memoryId}`));
     if (memorySnap.exists()) {
       droppedTripId = tripId;
@@ -147,12 +142,7 @@
     return [h, s * 100, v * 255];
   }
 
-<<<<<<< HEAD
-  // get most frequent color from each section
-  function getColumnColors(imageData, columnCount = 5) {
-=======
   function getColumnColors(imageData: ImageData, columnCount = 5) {
->>>>>>> 0570bcffe9996e925158c79503096d59ce341846
     const { data, width, height } = imageData;
     const columnWidth = Math.floor(width / columnCount);
     const columns = Array.from({ length: columnCount }, () => []);
@@ -178,12 +168,7 @@
     });
   }
 
-<<<<<<< HEAD
-  //collect color by column
-  async function extractColumnwiseColors(imageUrls, reverseColumns = true) {
-=======
   async function extractColumnwiseColors(imageUrls: any, reverseColumns = true) {
->>>>>>> 0570bcffe9996e925158c79503096d59ce341846
     const columnColorGroups = [[], [], [], [], []];
 
     for (const url of imageUrls) {

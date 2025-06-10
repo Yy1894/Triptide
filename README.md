@@ -6,9 +6,9 @@ Name: Adelia Putri
 Student ID: 20210782  
 Email: adelia@kaist.ac.kr  
 
-Name:  
-Student ID:  
-Email:
+Name: Chaebean Yang
+Student ID: 20230412
+Email: kazed0102@kaist.ac.kr
 
 Git Repository: [Travel App](http://git.prototyping.id/20210782/travel-app)
 
@@ -40,7 +40,7 @@ Demo Video:
 
 ## App Description
 
-**TravelApp** is an intelligent travel planner that helps users create personalized itineraries by learning from their past trips. The app connects memories with future plans, allowing users to revisit previous journeys through photos and color mood boards, while planning new adventures based on those experiences. TravelApp leverages AI-powered recommendations, interactive maps, and seamless photo management to make travel planning both enjoyable and meaningful.
+**Triptide** is an intelligent travel planner that helps users create personalized itineraries by learning from their past trips. The app connects memories with future plans, allowing users to revisit previous journeys through photos and color mood boards, while planning new adventures based on those experiences. TravelApp leverages AI-powered recommendations, interactive maps, and seamless photo management to make travel planning both enjoyable and meaningful.
 
 ## How to Start
 
@@ -86,13 +86,33 @@ After receiving recommendations, **TravelApp** helps you organize them by dividi
 
 #### My Trips Page
 View all your ongoing and past trips in one place.
+
 <p align="center">
     <img src="static/README/MyTrips.png" alt="My Trips Screenshot">
 </p>
 
 ### Memory
 
-The Memory section allows you to add and view memories for each trip. You can upload photos, create color mood boards, and revisit the vibes of your journeys. The app uses Unsplash to fetch beautiful location-based images and Uploadcare for photo uploads.
+#### Home
+On the map, you can see all the locations where you've added photos. Additionally, if there are trips planned through the Triptide Planner that haven’t had any photos added yet, they will appear as markers. This visual connection between the planner and memory sections helps transform your travel plans into lasting memories.
+
+<p align="center">
+    <img src="static/README/MemoryHome.png" alt="Memory Home Screenshot">
+</p>
+
+#### View photos by location Page
+You can collect and revisit your travel photos all in one place. By uploading your images, you can visualize the mood of your journey through colors. When you’ve visited the same place more than once, you can compare each set of photos side by side, exploring visual similarities through shared color tones. This page offers a new, engaging way to reflect on your travels—through a uniquely visual and interactive experience.
+
+<p align="center">
+    <img src="static/README/ViewImage.png" alt="View Photos Screenshot">
+</p>
+
+#### My Memories Page
+Here, you can browse through the photo decks of all your trips.
+
+<p align="center">
+    <img src="static/README/MyMemory.png" alt="View My Memories Screenshot">
+</p>
 
 ## App Features
 
@@ -173,7 +193,7 @@ The observer pattern is used for real-time data updates:
 
 ## Limitations
 
-- **Image API Limitation:** Unsplash's free API restricts requests to 50 images per hour, which may affect the user experience when generating mood boards or searching for location-based images.
+- **Image API Limitation:** Unsplash's free API restricts requests to 50 images per hour, which may affect the user experience when generating mood boards or searching for location-based images. Due to limitations of the free version of Uploadcare, EXIF metadata (such as timestamp and location) is stripped during image upload. As a result, we were unable to provide contextual information extracted from images.
 - **Map Interactions:** Currently, markers on the map in the itinerary page are not clickable or interactive, limiting direct navigation from the map to trip details.
 - **Memory Photo Limit:** Adding a large number of photos to a trip can result in slow page rendering and decreased performance.
 
