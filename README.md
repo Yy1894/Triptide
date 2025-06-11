@@ -205,7 +205,7 @@ Browse a gallery of all your past trips, each represented by a photo deck.
 
 ## Database Structure
 <p align="center">
-    <img src="static/README/database.png" alt="Recommendation Popup Screenshot" height="400">
+    <img src="static/README/database.png" alt="Recommendation Popup Screenshot" height="600">
 </p>
 
 

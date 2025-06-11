@@ -47,17 +47,21 @@
           const allTrips = Object.entries(allTripsSnap.val());
 
           tripOptions = allTrips
-            .filter(([id, trip]) => {
+            .filter(([id, trip]: [string, any]) => {
               const loc = trip.destination?.location;
               const hasMemories = trip.memories && Object.keys(trip.memories).length > 0;
               const sameLocation =
                 loc && Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lng - lng) < 0.0001;
               return sameLocation && hasMemories;
             })
-            .map(([id, trip]) => {
+            .map(([id, trip]: [string, any]) => {
               const memories = Object.entries(trip.memories);
-              const sorted = memories.sort((a, b) => new Date(a[1].startDate) - new Date(b[1].startDate));
-              const [latestMemoryId, latestMemory] = sorted[0];
+              const sorted = memories.sort(
+                (a, b) =>
+                  new Date((a[1] as { startDate: string }).startDate).getTime() -
+                  new Date((b[1] as { startDate: string }).startDate).getTime()
+              );
+              const [latestMemoryId, latestMemory]: [any, any] = sorted[0];
 
               return {
                 id,
@@ -99,10 +103,10 @@
     }
   }
 
-  $: wheelStyle = {
-    transform: `translateY(-50%) rotate(${rotationAngle}deg)`,
-    transformOrigin: 'center center'
-  };
+  // $: wheelStyle = {
+  //   transform: `translateY(-50%) rotate(${rotationAngle}deg)`,
+  //   transformOrigin: 'center center'
+  // };
 
   async function getImageData(url: string) {
     const img = new Image();
@@ -117,12 +121,15 @@
     canvas.width = MAX_WIDTH;
     canvas.height = Math.round(img.height * ratio);
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+    if (ctx) {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+    return 0;
   }
 
   //convert rgb to hsb for color adjustment
-  function rgbToHsb(r, g, b) {
+  function rgbToHsb(r: number, g: number, b: number) {
     const r_ = r / 255, g_ = g / 255, b_ = b / 255;
     const max = Math.max(r_, g_, b_), min = Math.min(r_, g_, b_);
     const delta = max - min;
@@ -145,7 +152,7 @@
   function getColumnColors(imageData: ImageData, columnCount = 5) {
     const { data, width, height } = imageData;
     const columnWidth = Math.floor(width / columnCount);
-    const columns = Array.from({ length: columnCount }, () => []);
+    const columns: string[][] = Array.from({ length: columnCount }, () => []);
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -162,42 +169,44 @@
     }
 
     return columns.map(column => {
-      const count = {};
+      const count: any = {};
       column.forEach(color => count[color] = (count[color] || 0) + 1);
-      return Object.entries(count).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'rgb(0,0,0)';
+      return Object.entries(count).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] ?? 'rgb(0,0,0)';
     });
   }
 
   async function extractColumnwiseColors(imageUrls: any, reverseColumns = true) {
-    const columnColorGroups = [[], [], [], [], []];
+    const columnColorGroups: any = [[], [], [], [], []];
 
     for (const url of imageUrls) {
       const imageData = await getImageData(url);
-      let colColors = getColumnColors(imageData);
+      if (imageData != 0) {
+        let colColors = getColumnColors(imageData);
 
-      // reverse column order
-      if (reverseColumns) {
-        colColors = colColors.reverse();
+        // reverse column order
+        if (reverseColumns) {
+          colColors = colColors.reverse();
+        }
+
+        colColors.forEach((color, index) => {
+          columnColorGroups[index].push(color);
+        });
       }
-
-      colColors.forEach((color, index) => {
-        columnColorGroups[index].push(color);
-      });
     }
 
     return columnColorGroups;
   }
 
   // make gradient wheel
-  function makeConcentricGradients(groups, rotationOffset = 0, imageCount = 1, isDropped = false) {
+  function makeConcentricGradients(groups: any[], rotationOffset = 0, imageCount = 1, isDropped = false) {
     const directionFactor = 1;
     const additionalAdjustment = isDropped ? -360 / imageCount : 0;
-    return groups.map(colors => {
+    return groups.map((colors: any[]) => {
       const step = 360 / colors.length;
       const rawStart = rotationOffset + directionFactor * (90 - 180 / imageCount);
       const start = isDropped ? -rawStart + additionalAdjustment : rawStart;
       return `conic-gradient(from ${start}deg, ${
-        colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')
+        colors.map((c: any, i: number) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')
       })`;
     });
   }
@@ -212,7 +221,7 @@
       gradients.push('radial-gradient(circle, var(--black) 100%)');
     }
 
-    gradientLayers = gradients.map((bg, i) => {
+    gradientLayers = gradients.map((bg: any, i: number) => {
       const scale = 1 - i * 0.1;
       return `background: ${bg};
               width: ${scale * 100}%;
@@ -246,9 +255,9 @@
               border-radius: 50%;`;
     });
 
-    droppedWheelStyle = {
-      transform: `translateY(-50%) rotate(${-90 + (360 / droppedMemory.images.length) * droppedImageIndex}deg)`
-    };
+    // droppedWheelStyle = {
+    //   transform: `translateY(-50%) rotate(${-90 + (360 / droppedMemory.images.length) * droppedImageIndex}deg)`
+    // };
 
     droppedCurrentImage = droppedMemory.images[droppedImageIndex];
   }
@@ -277,16 +286,18 @@
     }
   }
 
-  function handleDrop(event: { preventDefault: () => void; dataTransfer: { getData: (arg0: string) => any; }; }) {
+  function handleDrop(event: DragEvent) {
     event.preventDefault();
     if (droppedMemory && isDroppedVisible) return;
 
-    const droppedTripId = event.dataTransfer.getData("tripId");
-    const droppedMemoryId = event.dataTransfer.getData("memoryId");
-    loadDroppedTrip(droppedTripId, droppedMemoryId);
+    if (event.dataTransfer) {
+      const droppedTripId = event.dataTransfer.getData("tripId");
+      const droppedMemoryId = event.dataTransfer.getData("memoryId");
+      loadDroppedTrip(droppedTripId, droppedMemoryId);
+    }
   }
 
-  function allowDrop(event: { preventDefault: () => void; }) {
+  function allowDrop(event: DragEvent) {
     if (!droppedMemory || !isDroppedVisible) {
       event.preventDefault();
     }
@@ -314,8 +325,10 @@
               class={trip.id === tripId ? 'active' : ''}
               draggable="true"
               on:dragstart={(e) => {
-                e.dataTransfer.setData('tripId', trip.id);
-                e.dataTransfer.setData('memoryId', trip.memoryId);
+                if (e.dataTransfer) {
+                  e.dataTransfer.setData('tripId', trip.id);
+                  e.dataTransfer.setData('memoryId', trip.memoryId);
+                }
               }}
               on:click={() => goto(`/viewimage/${trip.id}/${trip.memoryId}`)}>
               {trip.label}
@@ -328,7 +341,7 @@
         <!-- leftside original wheel -->
         <div class="wheel-section">
           <div class="wheel-mask">
-            <div class="gradient-wheel" style={wheelStyle}>
+            <div class="gradient-wheel">
               {#each gradientLayers as style}
                 <div class="layer" style={style}></div>
               {/each}
@@ -337,6 +350,7 @@
           </div>
 
           {#if currentImage}
+            <!-- svelte-ignore a11y_img_redundant_alt -->
             <img class="preview-img" src={currentImage} alt="Current Image" />
           {/if}
 
@@ -364,7 +378,7 @@
             </button>
         
             <div class="dropped-mask">
-              <div class="dropped-wheel" style={droppedWheelStyle}>
+              <div class="dropped-wheel">
                 {#each droppedGradientLayers as style}
                   <div class="layer" style={style}></div>
                 {/each}
