@@ -43,7 +43,8 @@ Demo Video: [Triptide Demo Video](https://youtu.be/l9IxPiXSwII)
     - [My Memories Page](#my-memories-page)
 - [Code Organization](#code-organization)
   - [Tech Stack](#tech-stack)
-    - [Component \& File Structure](#component--file-structure)
+  - [Component \& File Structure](#component--file-structure)
+  - [Database Structure](#database-structure)
   - [Design Patterns](#design-patterns)
     - [MVC (Model-View-Controller)](#mvc-model-view-controller)
     - [Observer Pattern](#observer-pattern)
@@ -167,7 +168,7 @@ Browse a gallery of all your past trips, each represented by a photo deck.
   - [Uploadcare](https://uploadcare.com) for uploading and converting photos to URLs
   - [Unsplash API](https://unsplash.com/developers) for fetching location-based photos
 
-### Component & File Structure
+## Component & File Structure
 ```
 .
 ├── README.md                  # Project documentation
@@ -201,6 +202,12 @@ Browse a gallery of all your past trips, each represented by a photo deck.
 ├── tsconfig.json
 └── vite.config.ts
 ```
+
+## Database Structure
+<p align="center">
+    <img src="static/README/database.png" alt="Recommendation Popup Screenshot" height="400">
+</p>
+
 
 ## Design Patterns
 
