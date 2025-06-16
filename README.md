@@ -19,7 +19,7 @@ Name: Adelia Putri
 
 Name: Chaebean Yang  
 
-Git Repository: [Triptide Repository](http://git.prototyping.id/20210782/travel-app)  
+Git Repository: [Triptide Repository](https://github.com/Yy1894/Triptide.git)  
 Live Demo: [Triptide](https://triptide.netlify.app)  
 Demo Video: [Triptide Demo Video](https://youtu.be/l9IxPiXSwII)
 
