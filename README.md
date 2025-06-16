@@ -16,12 +16,8 @@
 # Student Information
 
 Name: Adelia Putri  
-Student ID: 20210782  
-Email: adelia@kaist.ac.kr  
 
 Name: Chaebean Yang  
-Student ID: 20230412  
-Email: kazed0102@kaist.ac.kr
 
 Git Repository: [Triptide Repository](http://git.prototyping.id/20210782/travel-app)  
 Live Demo: [Triptide](https://triptide.netlify.app)  
